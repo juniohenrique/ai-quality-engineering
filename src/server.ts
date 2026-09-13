@@ -1,8 +1,11 @@
 import { createServer } from "node:http";
 import { Pool } from "pg";
 import { HealthController } from "./controllers/health.controller.js";
+import { UserController } from "./controllers/user.controller.js";
 import { HealthRepository } from "./repositories/health.repository.js";
+import { InMemoryUserRepository } from "./repositories/in-memory-user.repository.js";
 import { HealthService } from "./services/health.service.js";
+import { UserService } from "./services/user.service.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const databaseUrl =
@@ -12,8 +15,15 @@ const pool = new Pool({ connectionString: databaseUrl });
 const healthRepository = new HealthRepository(pool);
 const healthService = new HealthService(healthRepository);
 const healthController = new HealthController(healthService);
+const userService = new UserService(new InMemoryUserRepository());
+const userController = new UserController(userService);
 
 const server = createServer(async (request, response) => {
+  if (request.url === "/users") {
+    await userController.handleList(response);
+    return;
+  }
+
   if (request.url !== "/health") {
     response.writeHead(404, { "content-type": "application/json" });
     response.end(JSON.stringify({ error: "not_found" }));

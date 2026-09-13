@@ -5,6 +5,7 @@ import { UserService } from "./user.service.js";
 
 function createRepository(): UserRepository {
   return {
+    findAll: vi.fn(),
     findByEmail: vi.fn(),
     findById: vi.fn(),
     save: vi.fn(),
@@ -64,5 +65,21 @@ describe("UserService", () => {
 
     await expect(service.findUserById("user-1")).resolves.toBe(user);
     expect(repository.findById).toHaveBeenCalledWith("user-1");
+  });
+
+  it("delegates listing users to the repository", async () => {
+    const repository = createRepository();
+    const users = [
+      new User({
+        id: "user-1",
+        email: "user@example.com",
+        name: "Ada Lovelace",
+      }),
+    ];
+    vi.mocked(repository.findAll).mockResolvedValue(users);
+    const service = new UserService(repository);
+
+    await expect(service.listUsers()).resolves.toBe(users);
+    expect(repository.findAll).toHaveBeenCalledOnce();
   });
 });

@@ -39,7 +39,12 @@ Verifique a aplicacao:
 
 ```bash
 curl http://localhost:3000/health
+curl http://localhost:3000/users
 ```
+
+O endpoint `/users` retorna a lista de usuarios cadastrados em JSON. Nesta
+versao, os usuarios sao mantidos em memoria enquanto a aplicacao esta em
+execucao.
 
 O endpoint retorna HTTP `200` e o payload abaixo quando o banco esta
 disponivel:
@@ -84,13 +89,13 @@ O dominio de usuario esta organizado em:
 
 - `src/domain/user.ts`: entidade `User` com `id`, `email` e `name`.
 - `src/repositories/user.repository.ts`: contrato `UserRepository` com
-  operacoes de busca e persistencia.
+  operacoes de listagem, busca e persistencia.
 - `src/services/user.service.ts`: criacao e busca de usuarios.
 
 A entidade remove espacos externos, normaliza o e-mail para minusculas e
 valida `id`, `email` e `name`. O servico gera o ID com `randomUUID`, impede
-duplicidade de e-mail e delega a persistencia ao repositorio. A implementacao
-concreta de persistencia de usuarios ainda nao faz parte deste modulo.
+duplicidade de e-mail e delega a persistencia ao repositorio. O endpoint
+`GET /users` usa um repositorio em memoria.
 
 ## Testes e qualidade
 
@@ -111,6 +116,7 @@ cobertura atual inclui:
 - normalizacao de e-mail e nome;
 - prevencao de e-mails duplicados;
 - delegacao de busca e persistencia pelo `UserService`.
+- listagem de usuarios pelo endpoint `GET /users`.
 
 ## Estrutura
 
