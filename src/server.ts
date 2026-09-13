@@ -1,4 +1,4 @@
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage } from "node:http";
 import { URL } from "node:url";
 import { Pool } from "pg";
 import { HealthController } from "./controllers/health.controller.js";
@@ -19,6 +19,16 @@ const healthController = new HealthController(healthService);
 const userService = new UserService(new InMemoryUserRepository());
 const userController = new UserController(userService);
 
+const readRequestBody = async (request: IncomingMessage): Promise<string> => {
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks).toString("utf8");
+};
+
 const server = createServer(async (request, response) => {
   const requestUrl = new URL(request.url ?? "/", "http://localhost");
   const userIdMatch = requestUrl.pathname.match(/^\/users\/([^/]+)$/);
@@ -30,6 +40,17 @@ const server = createServer(async (request, response) => {
   }
 
   if (requestUrl.pathname === "/users") {
+    if (request.method === "POST") {
+      try {
+        const body = await readRequestBody(request);
+        await userController.handleCreate(JSON.parse(body), response);
+      } catch {
+        response.writeHead(400, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "invalid_request" }));
+      }
+      return;
+    }
+
     await userController.handleList(response);
     return;
   }
