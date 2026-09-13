@@ -16,6 +16,7 @@
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\"",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage src/services/user.service.test.ts",
     "test:unit": "vitest run tests/unit --passWithNoTests",
     "test:integration": "vitest run tests/integration --passWithNoTests",
     "test:watch": "vitest"
@@ -25,6 +26,7 @@
     "@types/pg": "^8.11.10",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^1.6.1",
     "eslint": "^8.57.0",
     "prettier": "^3.2.0",
     "tsx": "^4.7.0",

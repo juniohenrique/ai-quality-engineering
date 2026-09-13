@@ -124,6 +124,7 @@ Execute os comandos individualmente ou em conjunto:
 
 ```bash
 npm test
+npm run test:coverage
 npm run build
 npm run lint
 npm run format
@@ -143,6 +144,7 @@ cobertura atual inclui:
 - atualizacao de usuario e resposta `404` pelo endpoint `PUT /users/:id`.
 - remocao de usuario e resposta `404` pelo endpoint `DELETE /users/:id`.
 - respostas de erro padronizadas com `error` e `message`.
+- testes unitarios do `UserService` com cobertura de 100% no arquivo de servico.
 
 ## Estrutura
 
