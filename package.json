@@ -7,8 +7,12 @@
     "build": "tsc",
     "lint": "eslint .",
     "format": "prettier --check .",
+    "format:check": "prettier --check \"**/*.{ts,json,md}\"",
     "start": "node dist/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
