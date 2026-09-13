@@ -1,5 +1,12 @@
 node_modules/
-coverage/
 dist/
+coverage/
+.env
+.env.local
 postgres_data/
 *.log
+.DS_Store
+.vscode/
+.idea/
+playwright-report/
+test-results/
