@@ -7,6 +7,8 @@ export interface CreateUserInput {
   name: string;
 }
 
+export type UpdateUserInput = CreateUserInput;
+
 export class UserService {
   constructor(private readonly repository: UserRepository) {}
 
@@ -34,5 +36,29 @@ export class UserService {
 
   async listUsers(): Promise<User[]> {
     return this.repository.findAll();
+  }
+
+  async updateUser(id: string, input: UpdateUserInput): Promise<User | undefined> {
+    const existingUser = await this.repository.findById(id);
+
+    if (!existingUser) {
+      return undefined;
+    }
+
+    const email = input.email.trim().toLowerCase();
+    const userWithEmail = await this.repository.findByEmail(email);
+
+    if (userWithEmail && userWithEmail.id !== id) {
+      throw new Error("User email is already in use");
+    }
+
+    const updatedUser = new User({
+      id,
+      email,
+      name: input.name,
+    });
+
+    await this.repository.update(updatedUser);
+    return updatedUser;
   }
 }

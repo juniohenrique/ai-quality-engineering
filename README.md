@@ -44,6 +44,9 @@ curl http://localhost:3000/users/<id>
 curl -X POST http://localhost:3000/users \
 	-H 'content-type: application/json' \
 	-d '{"email":"ada@example.com","name":"Ada Lovelace"}'
+curl -X PUT http://localhost:3000/users/<id> \
+	-H 'content-type: application/json' \
+	-d '{"email":"ada.updated@example.com","name":"Ada Byron Lovelace"}'
 ```
 
 O endpoint `/users` retorna a lista de usuarios cadastrados em JSON. Nesta
@@ -53,6 +56,8 @@ O endpoint `/users/:id` retorna o usuario encontrado ou HTTP `404` quando o ID
 nao existe.
 O endpoint `POST /users` cria um usuario e retorna HTTP `201`. Payloads
 invalidos retornam HTTP `400`.
+O endpoint `PUT /users/:id` atualiza um usuario existente e retorna HTTP `200`.
+Quando o ID nao existe, retorna HTTP `404`.
 
 O endpoint retorna HTTP `200` e o payload abaixo quando o banco esta
 disponivel:
@@ -103,7 +108,8 @@ O dominio de usuario esta organizado em:
 A entidade remove espacos externos, normaliza o e-mail para minusculas e
 valida `id`, `email` e `name`. O servico gera o ID com `randomUUID`, impede
 duplicidade de e-mail e delega a persistencia ao repositorio. O endpoint
-`GET /users`, `GET /users/:id` e `POST /users` usam um repositorio em memoria.
+`GET /users`, `GET /users/:id`, `POST /users` e `PUT /users/:id` usam um
+repositorio em memoria.
 
 ## Testes e qualidade
 
@@ -127,6 +133,7 @@ cobertura atual inclui:
 - listagem de usuarios pelo endpoint `GET /users`.
 - busca por ID e resposta `404` pelo endpoint `GET /users/:id`.
 - criacao e validacao de usuarios pelo endpoint `POST /users`.
+- atualizacao de usuario e resposta `404` pelo endpoint `PUT /users/:id`.
 
 ## Estrutura
 

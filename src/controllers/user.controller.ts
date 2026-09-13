@@ -1,10 +1,13 @@
 import type { ServerResponse } from "node:http";
 import type { UserService } from "../services/user.service.js";
-import type { CreateUserInput } from "../services/user.service.js";
+import type { CreateUserInput, UpdateUserInput } from "../services/user.service.js";
 
 export class UserController {
   constructor(
-    private readonly service: Pick<UserService, "createUser" | "findUserById" | "listUsers">,
+    private readonly service: Pick<
+      UserService,
+      "createUser" | "findUserById" | "listUsers" | "updateUser"
+    >,
   ) {}
 
   async handleCreate(input: unknown, response: ServerResponse): Promise<void> {
@@ -48,6 +51,34 @@ export class UserController {
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify(user));
   }
+
+  async handleUpdate(id: string, input: unknown, response: ServerResponse): Promise<void> {
+    if (!isUpdateUserInput(input)) {
+      response.writeHead(400, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: "invalid_request" }));
+      return;
+    }
+
+    try {
+      const user = await this.service.updateUser(id, input);
+
+      if (!user) {
+        response.writeHead(404, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "not_found" }));
+        return;
+      }
+
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify(user));
+    } catch (error) {
+      response.writeHead(400, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "invalid_request",
+        }),
+      );
+    }
+  }
 }
 
 function isCreateUserInput(input: unknown): input is CreateUserInput {
@@ -63,3 +94,5 @@ function isCreateUserInput(input: unknown): input is CreateUserInput {
     candidate.name.trim().length > 0
   );
 }
+
+const isUpdateUserInput = isCreateUserInput satisfies (input: unknown) => input is UpdateUserInput;
