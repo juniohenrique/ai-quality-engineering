@@ -10,3 +10,4 @@ postgres_data/
 .idea/
 playwright-report/
 test-results/
+pr_body.md
