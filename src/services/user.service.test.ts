@@ -55,6 +55,18 @@ describe("UserService", () => {
     expect(repository.save).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { email: "invalid-email", name: "Ada Lovelace" },
+    { email: "ada@example.com", name: "" },
+  ])("rejects invalid user data: %s", async (input) => {
+    const repository = createRepository();
+    vi.mocked(repository.findByEmail).mockResolvedValue(undefined);
+    const service = new UserService(repository);
+
+    await expect(service.createUser(input)).rejects.toThrow();
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
   it("delegates user lookup to the repository", async () => {
     const repository = createRepository();
     const user = new User({
@@ -125,6 +137,31 @@ describe("UserService", () => {
         name: "Ada Lovelace",
       }),
     ).resolves.toBeUndefined();
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an update with an email used by another user", async () => {
+    const repository = createRepository();
+    const existingUser = new User({
+      id: "user-1",
+      email: "user@example.com",
+      name: "Ada Lovelace",
+    });
+    const conflictingUser = new User({
+      id: "user-2",
+      email: "other@example.com",
+      name: "Grace Hopper",
+    });
+    vi.mocked(repository.findById).mockResolvedValue(existingUser);
+    vi.mocked(repository.findByEmail).mockResolvedValue(conflictingUser);
+    const service = new UserService(repository);
+
+    await expect(
+      service.updateUser("user-1", {
+        email: "other@example.com",
+        name: "Ada Byron Lovelace",
+      }),
+    ).rejects.toThrow("User email is already in use");
     expect(repository.update).not.toHaveBeenCalled();
   });
 
