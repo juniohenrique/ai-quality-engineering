@@ -6,8 +6,7 @@ import { HealthService } from "./services/health.service.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const databaseUrl =
-  process.env.DATABASE_URL ??
-  "postgres://postgres:postgres@localhost:5432/quality";
+  process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/quality";
 const pool = new Pool({ connectionString: databaseUrl });
 
 const healthRepository = new HealthRepository(pool);
