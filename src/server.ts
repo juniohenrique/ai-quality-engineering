@@ -1,11 +1,18 @@
 import { createServer } from "node:http";
 import { Pool } from "pg";
+import { HealthController } from "./controllers/health.controller.js";
+import { HealthRepository } from "./repositories/health.repository.js";
+import { HealthService } from "./services/health.service.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const databaseUrl =
   process.env.DATABASE_URL ??
   "postgres://postgres:postgres@localhost:5432/quality";
 const pool = new Pool({ connectionString: databaseUrl });
+
+const healthRepository = new HealthRepository(pool);
+const healthService = new HealthService(healthRepository);
+const healthController = new HealthController(healthService);
 
 const server = createServer(async (request, response) => {
   if (request.url !== "/health") {
@@ -14,16 +21,7 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  try {
-    await pool.query("SELECT 1");
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ status: "ok", database: "connected" }));
-  } catch {
-    response.writeHead(503, { "content-type": "application/json" });
-    response.end(
-      JSON.stringify({ status: "degraded", database: "unavailable" }),
-    );
-  }
+  await healthController.handleHealth(response);
 });
 
 server.listen(port, () => {
