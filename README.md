@@ -40,11 +40,14 @@ Verifique a aplicacao:
 ```bash
 curl http://localhost:3000/health
 curl http://localhost:3000/users
+curl http://localhost:3000/users/<id>
 ```
 
 O endpoint `/users` retorna a lista de usuarios cadastrados em JSON. Nesta
 versao, os usuarios sao mantidos em memoria enquanto a aplicacao esta em
 execucao.
+O endpoint `/users/:id` retorna o usuario encontrado ou HTTP `404` quando o ID
+nao existe.
 
 O endpoint retorna HTTP `200` e o payload abaixo quando o banco esta
 disponivel:
@@ -95,7 +98,7 @@ O dominio de usuario esta organizado em:
 A entidade remove espacos externos, normaliza o e-mail para minusculas e
 valida `id`, `email` e `name`. O servico gera o ID com `randomUUID`, impede
 duplicidade de e-mail e delega a persistencia ao repositorio. O endpoint
-`GET /users` usa um repositorio em memoria.
+`GET /users` e `GET /users/:id` usam um repositorio em memoria.
 
 ## Testes e qualidade
 
@@ -117,6 +120,7 @@ cobertura atual inclui:
 - prevencao de e-mails duplicados;
 - delegacao de busca e persistencia pelo `UserService`.
 - listagem de usuarios pelo endpoint `GET /users`.
+- busca por ID e resposta `404` pelo endpoint `GET /users/:id`.
 
 ## Estrutura
 

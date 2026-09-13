@@ -32,3 +32,48 @@ describe("GET /users", () => {
     expect(JSON.parse(body)).toEqual([firstUser, secondUser]);
   });
 });
+
+describe("GET /users/:id", () => {
+  it("returns the user matching the requested id", async () => {
+    const service = new UserService(new InMemoryUserRepository());
+    const user = await service.createUser({
+      email: "ada@example.com",
+      name: "Ada Lovelace",
+    });
+    const controller = new UserController(service);
+    let statusCode: number | undefined;
+    let body = "";
+    const response = {
+      writeHead: (code: number) => {
+        statusCode = code;
+      },
+      end: (responseBody: string) => {
+        body = responseBody;
+      },
+    };
+
+    await controller.handleFindById(user.id, response as never);
+
+    expect(statusCode).toBe(200);
+    expect(JSON.parse(body)).toEqual(user);
+  });
+
+  it("returns 404 when the user does not exist", async () => {
+    const controller = new UserController(new UserService(new InMemoryUserRepository()));
+    let statusCode: number | undefined;
+    let body = "";
+    const response = {
+      writeHead: (code: number) => {
+        statusCode = code;
+      },
+      end: (responseBody: string) => {
+        body = responseBody;
+      },
+    };
+
+    await controller.handleFindById("missing-user", response as never);
+
+    expect(statusCode).toBe(404);
+    expect(JSON.parse(body)).toEqual({ error: "not_found" });
+  });
+});
