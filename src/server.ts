@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { URL } from "node:url";
 import { Pool } from "pg";
 import { HealthController } from "./controllers/health.controller.js";
 import { UserController } from "./controllers/user.controller.js";
@@ -19,12 +20,21 @@ const userService = new UserService(new InMemoryUserRepository());
 const userController = new UserController(userService);
 
 const server = createServer(async (request, response) => {
-  if (request.url === "/users") {
+  const requestUrl = new URL(request.url ?? "/", "http://localhost");
+  const userIdMatch = requestUrl.pathname.match(/^\/users\/([^/]+)$/);
+  const userId = userIdMatch?.[1];
+
+  if (userId !== undefined) {
+    await userController.handleFindById(userId, response);
+    return;
+  }
+
+  if (requestUrl.pathname === "/users") {
     await userController.handleList(response);
     return;
   }
 
-  if (request.url !== "/health") {
+  if (requestUrl.pathname !== "/health") {
     response.writeHead(404, { "content-type": "application/json" });
     response.end(JSON.stringify({ error: "not_found" }));
     return;
