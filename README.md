@@ -1,25 +1,134 @@
 # AI Quality Engineering
 
-Base TypeScript do projeto.
+Base TypeScript para os exercicios de engenharia de qualidade, com uma
+arquitetura organizada em controller, service, repository e domain.
 
-## Comandos
+## Requisitos
+
+- Node.js 22 ou superior
+- npm
+- Docker e Docker Compose para executar a aplicacao com PostgreSQL
+
+## Configuracao local
+
+Instale as dependencias:
 
 ```bash
 npm install
-npm run build
-npm run lint
-npm run format
-npm test
 ```
+
+Para executar a aplicacao diretamente, defina `DATABASE_URL` quando quiser
+usar uma conexao diferente da padrao e inicie o servidor:
+
+```bash
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/quality npm start
+```
+
+O servidor usa a porta `3000` por padrao. A porta pode ser alterada com a
+variavel `PORT`.
 
 ## Docker Compose
 
+O Compose inicia a aplicacao e um PostgreSQL 16 com health check:
+
 ```bash
 docker compose up --build
+```
+
+Verifique a aplicacao:
+
+```bash
 curl http://localhost:3000/health
 ```
 
-O endpoint de health check retorna `database: connected` quando a aplicacao
-consegue consultar o PostgreSQL.
+O endpoint retorna HTTP `200` e o payload abaixo quando o banco esta
+disponivel:
 
-Para evitar conflito com portas locais, use `APP_PORT` e `DB_PORT`.
+```json
+{ "status": "ok", "database": "connected" }
+```
+
+Quando a aplicacao nao consegue consultar o banco, retorna HTTP `503` com
+`status: "degraded"` e `database: "unavailable"`.
+
+Para evitar conflitos com portas locais, use:
+
+```bash
+APP_PORT=3001 DB_PORT=5433 docker compose up --build
+```
+
+`APP_PORT` altera a porta exposta da aplicacao e `DB_PORT` altera a porta
+exposta do PostgreSQL. Internamente, a aplicacao continua usando a porta
+`3000` e o banco continua usando a porta `5432` na rede do Compose.
+
+## Arquitetura
+
+O projeto separa responsabilidades por camada:
+
+- `src/controllers`: adapta requisicoes HTTP para os servicos.
+- `src/services`: concentra regras de negocio e orquestra repositorios.
+- `src/repositories`: define contratos e implementa acesso a dados.
+- `src/domain`: contem entidades e suas invariantes.
+
+### Health check
+
+O fluxo de `/health` e:
+
+1. `HealthController` recebe a requisicao e define o status HTTP.
+2. `HealthService` transforma o resultado da consulta em um `HealthStatus`.
+3. `HealthRepository` executa `SELECT 1` no PostgreSQL.
+
+### User domain
+
+O dominio de usuario esta organizado em:
+
+- `src/domain/user.ts`: entidade `User` com `id`, `email` e `name`.
+- `src/repositories/user.repository.ts`: contrato `UserRepository` com
+  operacoes de busca e persistencia.
+- `src/services/user.service.ts`: criacao e busca de usuarios.
+
+A entidade remove espacos externos, normaliza o e-mail para minusculas e
+valida `id`, `email` e `name`. O servico gera o ID com `randomUUID`, impede
+duplicidade de e-mail e delega a persistencia ao repositorio. A implementacao
+concreta de persistencia de usuarios ainda nao faz parte deste modulo.
+
+## Testes e qualidade
+
+Execute os comandos individualmente ou em conjunto:
+
+```bash
+npm test
+npm run build
+npm run lint
+npm run format
+```
+
+Os testes sao executados pelo Vitest e ficam ao lado das implementacoes. A
+cobertura atual inclui:
+
+- bootstrap e arquitetura de health check;
+- criacao e validacao da entidade `User`;
+- normalizacao de e-mail e nome;
+- prevencao de e-mails duplicados;
+- delegacao de busca e persistencia pelo `UserService`.
+
+## Estrutura
+
+```text
+src/
+	controllers/
+		health.controller.ts
+	domain/
+		user.ts
+		user.test.ts
+	repositories/
+		health.repository.ts
+		user.repository.ts
+	services/
+		health.service.ts
+		user.service.ts
+		user.service.test.ts
+	index.ts
+	index.test.ts
+	server.ts
+```
