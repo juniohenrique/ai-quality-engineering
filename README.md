@@ -47,6 +47,7 @@ curl -X POST http://localhost:3000/users \
 curl -X PUT http://localhost:3000/users/<id> \
 	-H 'content-type: application/json' \
 	-d '{"email":"ada.updated@example.com","name":"Ada Byron Lovelace"}'
+curl -X DELETE http://localhost:3000/users/<id>
 ```
 
 O endpoint `/users` retorna a lista de usuarios cadastrados em JSON. Nesta
@@ -58,6 +59,8 @@ O endpoint `POST /users` cria um usuario e retorna HTTP `201`. Payloads
 invalidos retornam HTTP `400`.
 O endpoint `PUT /users/:id` atualiza um usuario existente e retorna HTTP `200`.
 Quando o ID nao existe, retorna HTTP `404`.
+O endpoint `DELETE /users/:id` remove um usuario e retorna HTTP `204`. Quando o
+ID nao existe, retorna HTTP `404`.
 
 O endpoint retorna HTTP `200` e o payload abaixo quando o banco esta
 disponivel:
@@ -108,8 +111,8 @@ O dominio de usuario esta organizado em:
 A entidade remove espacos externos, normaliza o e-mail para minusculas e
 valida `id`, `email` e `name`. O servico gera o ID com `randomUUID`, impede
 duplicidade de e-mail e delega a persistencia ao repositorio. O endpoint
-`GET /users`, `GET /users/:id`, `POST /users` e `PUT /users/:id` usam um
-repositorio em memoria.
+`GET /users`, `GET /users/:id`, `POST /users`, `PUT /users/:id` e
+`DELETE /users/:id` usam um repositorio em memoria.
 
 ## Testes e qualidade
 
@@ -134,6 +137,7 @@ cobertura atual inclui:
 - busca por ID e resposta `404` pelo endpoint `GET /users/:id`.
 - criacao e validacao de usuarios pelo endpoint `POST /users`.
 - atualizacao de usuario e resposta `404` pelo endpoint `PUT /users/:id`.
+- remocao de usuario e resposta `404` pelo endpoint `DELETE /users/:id`.
 
 ## Estrutura
 

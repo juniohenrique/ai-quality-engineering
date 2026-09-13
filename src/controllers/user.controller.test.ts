@@ -186,3 +186,30 @@ describe("PUT /users/:id", () => {
     expect(JSON.parse(body)).toEqual({ error: "not_found" });
   });
 });
+
+describe("DELETE /users/:id", () => {
+  it("deletes the user and returns 204", async () => {
+    const service = new UserService(new InMemoryUserRepository());
+    const user = await service.createUser({
+      email: "ada@example.com",
+      name: "Ada Lovelace",
+    });
+    const controller = new UserController(service);
+    const output = createResponse();
+
+    await controller.handleDelete(user.id, output.response as never);
+
+    expect(output.getStatusCode()).toBe(204);
+    await expect(service.findUserById(user.id)).resolves.toBeUndefined();
+  });
+
+  it("returns 404 when deleting a missing user", async () => {
+    const controller = new UserController(new UserService(new InMemoryUserRepository()));
+    const output = createResponse();
+
+    await controller.handleDelete("missing-user", output.response as never);
+
+    expect(output.getStatusCode()).toBe(404);
+    expect(JSON.parse(output.getBody())).toEqual({ error: "not_found" });
+  });
+});
