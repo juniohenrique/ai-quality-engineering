@@ -1,6 +1,7 @@
 import type { ServerResponse } from "node:http";
 import type { UserService } from "../services/user.service.js";
 import type { CreateUserInput, UpdateUserInput } from "../services/user.service.js";
+import { writeErrorResponse } from "../http/error-response.js";
 
 export class UserController {
   constructor(
@@ -12,8 +13,7 @@ export class UserController {
 
   async handleCreate(input: unknown, response: ServerResponse): Promise<void> {
     if (!isCreateUserInput(input)) {
-      response.writeHead(400, { "content-type": "application/json" });
-      response.end(JSON.stringify({ error: "invalid_request" }));
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       return;
     }
 
@@ -23,11 +23,11 @@ export class UserController {
       response.writeHead(201, { "content-type": "application/json" });
       response.end(JSON.stringify(user));
     } catch (error) {
-      response.writeHead(400, { "content-type": "application/json" });
-      response.end(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : "invalid_request",
-        }),
+      writeErrorResponse(
+        response,
+        400,
+        "invalid_request",
+        error instanceof Error ? error.message : "Invalid request",
       );
     }
   }
@@ -43,8 +43,7 @@ export class UserController {
     const user = await this.service.findUserById(id);
 
     if (!user) {
-      response.writeHead(404, { "content-type": "application/json" });
-      response.end(JSON.stringify({ error: "not_found" }));
+      writeErrorResponse(response, 404, "not_found", "User not found");
       return;
     }
 
@@ -54,8 +53,7 @@ export class UserController {
 
   async handleUpdate(id: string, input: unknown, response: ServerResponse): Promise<void> {
     if (!isUpdateUserInput(input)) {
-      response.writeHead(400, { "content-type": "application/json" });
-      response.end(JSON.stringify({ error: "invalid_request" }));
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       return;
     }
 
@@ -63,19 +61,18 @@ export class UserController {
       const user = await this.service.updateUser(id, input);
 
       if (!user) {
-        response.writeHead(404, { "content-type": "application/json" });
-        response.end(JSON.stringify({ error: "not_found" }));
+        writeErrorResponse(response, 404, "not_found", "User not found");
         return;
       }
 
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify(user));
     } catch (error) {
-      response.writeHead(400, { "content-type": "application/json" });
-      response.end(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : "invalid_request",
-        }),
+      writeErrorResponse(
+        response,
+        400,
+        "invalid_request",
+        error instanceof Error ? error.message : "Invalid request",
       );
     }
   }
@@ -84,8 +81,7 @@ export class UserController {
     const deleted = await this.service.deleteUser(id);
 
     if (!deleted) {
-      response.writeHead(404, { "content-type": "application/json" });
-      response.end(JSON.stringify({ error: "not_found" }));
+      writeErrorResponse(response, 404, "not_found", "User not found");
       return;
     }
 

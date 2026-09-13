@@ -7,6 +7,7 @@ import { HealthRepository } from "./repositories/health.repository.js";
 import { InMemoryUserRepository } from "./repositories/in-memory-user.repository.js";
 import { HealthService } from "./services/health.service.js";
 import { UserService } from "./services/user.service.js";
+import { writeErrorResponse } from "./http/error-response.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const databaseUrl =
@@ -45,8 +46,7 @@ const server = createServer(async (request, response) => {
         const body = await readRequestBody(request);
         await userController.handleUpdate(userId, JSON.parse(body), response);
       } catch {
-        response.writeHead(400, { "content-type": "application/json" });
-        response.end(JSON.stringify({ error: "invalid_request" }));
+        writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       }
       return;
     }
@@ -61,8 +61,7 @@ const server = createServer(async (request, response) => {
         const body = await readRequestBody(request);
         await userController.handleCreate(JSON.parse(body), response);
       } catch {
-        response.writeHead(400, { "content-type": "application/json" });
-        response.end(JSON.stringify({ error: "invalid_request" }));
+        writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       }
       return;
     }
@@ -72,8 +71,7 @@ const server = createServer(async (request, response) => {
   }
 
   if (requestUrl.pathname !== "/health") {
-    response.writeHead(404, { "content-type": "application/json" });
-    response.end(JSON.stringify({ error: "not_found" }));
+    writeErrorResponse(response, 404, "not_found", "Route not found");
     return;
   }
 

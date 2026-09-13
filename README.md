@@ -62,6 +62,10 @@ Quando o ID nao existe, retorna HTTP `404`.
 O endpoint `DELETE /users/:id` remove um usuario e retorna HTTP `204`. Quando o
 ID nao existe, retorna HTTP `404`.
 
+As respostas de erro seguem o formato JSON `{ "error": "...", "message": "..." }`.
+Por exemplo, uma rota inexistente retorna `{ "error": "not_found", "message":
+"Route not found" }`.
+
 O endpoint retorna HTTP `200` e o payload abaixo quando o banco esta
 disponivel:
 
@@ -138,6 +142,7 @@ cobertura atual inclui:
 - criacao e validacao de usuarios pelo endpoint `POST /users`.
 - atualizacao de usuario e resposta `404` pelo endpoint `PUT /users/:id`.
 - remocao de usuario e resposta `404` pelo endpoint `DELETE /users/:id`.
+- respostas de erro padronizadas com `error` e `message`.
 
 ## Estrutura
 

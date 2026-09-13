@@ -80,7 +80,8 @@ describe("POST /users", () => {
 
     expect(output.getStatusCode()).toBe(400);
     expect(JSON.parse(output.getBody())).toEqual({
-      error: "User email is invalid",
+      error: "invalid_request",
+      message: "User email is invalid",
     });
   });
 });
@@ -126,7 +127,10 @@ describe("GET /users/:id", () => {
     await controller.handleFindById("missing-user", response as never);
 
     expect(statusCode).toBe(404);
-    expect(JSON.parse(body)).toEqual({ error: "not_found" });
+    expect(JSON.parse(body)).toEqual({
+      error: "not_found",
+      message: "User not found",
+    });
   });
 });
 
@@ -183,7 +187,10 @@ describe("PUT /users/:id", () => {
     );
 
     expect(statusCode).toBe(404);
-    expect(JSON.parse(body)).toEqual({ error: "not_found" });
+    expect(JSON.parse(body)).toEqual({
+      error: "not_found",
+      message: "User not found",
+    });
   });
 });
 
@@ -210,6 +217,9 @@ describe("DELETE /users/:id", () => {
     await controller.handleDelete("missing-user", output.response as never);
 
     expect(output.getStatusCode()).toBe(404);
-    expect(JSON.parse(output.getBody())).toEqual({ error: "not_found" });
+    expect(JSON.parse(output.getBody())).toEqual({
+      error: "not_found",
+      message: "User not found",
+    });
   });
 });
