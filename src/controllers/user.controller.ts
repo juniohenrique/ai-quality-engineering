@@ -6,7 +6,7 @@ export class UserController {
   constructor(
     private readonly service: Pick<
       UserService,
-      "createUser" | "findUserById" | "listUsers" | "updateUser"
+      "createUser" | "deleteUser" | "findUserById" | "listUsers" | "updateUser"
     >,
   ) {}
 
@@ -78,6 +78,19 @@ export class UserController {
         }),
       );
     }
+  }
+
+  async handleDelete(id: string, response: ServerResponse): Promise<void> {
+    const deleted = await this.service.deleteUser(id);
+
+    if (!deleted) {
+      response.writeHead(404, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: "not_found" }));
+      return;
+    }
+
+    response.writeHead(204);
+    response.end();
   }
 }
 

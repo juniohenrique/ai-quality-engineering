@@ -35,6 +35,11 @@ const server = createServer(async (request, response) => {
   const userId = userIdMatch?.[1];
 
   if (userId !== undefined) {
+    if (request.method === "DELETE") {
+      await userController.handleDelete(userId, response);
+      return;
+    }
+
     if (request.method === "PUT") {
       try {
         const body = await readRequestBody(request);

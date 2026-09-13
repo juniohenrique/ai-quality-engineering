@@ -10,6 +10,7 @@ function createRepository(): UserRepository {
     findById: vi.fn(),
     save: vi.fn(),
     update: vi.fn(),
+    remove: vi.fn(),
   };
 }
 
@@ -125,5 +126,22 @@ describe("UserService", () => {
       }),
     ).resolves.toBeUndefined();
     expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it("deletes a user through the repository", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.remove).mockResolvedValue(true);
+    const service = new UserService(repository);
+
+    await expect(service.deleteUser("user-1")).resolves.toBe(true);
+    expect(repository.remove).toHaveBeenCalledWith("user-1");
+  });
+
+  it("returns false when deleting a missing user", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.remove).mockResolvedValue(false);
+    const service = new UserService(repository);
+
+    await expect(service.deleteUser("missing-user")).resolves.toBe(false);
   });
 });

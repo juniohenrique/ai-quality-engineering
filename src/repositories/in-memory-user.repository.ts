@@ -27,4 +27,15 @@ export class InMemoryUserRepository implements UserRepository {
       this.users[userIndex] = user;
     }
   }
+
+  async remove(id: string): Promise<boolean> {
+    const userIndex = this.users.findIndex((user) => user.id === id);
+
+    if (userIndex < 0) {
+      return false;
+    }
+
+    this.users.splice(userIndex, 1);
+    return true;
+  }
 }
