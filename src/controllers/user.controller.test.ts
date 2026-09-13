@@ -129,3 +129,60 @@ describe("GET /users/:id", () => {
     expect(JSON.parse(body)).toEqual({ error: "not_found" });
   });
 });
+
+describe("PUT /users/:id", () => {
+  it("updates and returns the user", async () => {
+    const service = new UserService(new InMemoryUserRepository());
+    const user = await service.createUser({
+      email: "ada@example.com",
+      name: "Ada Lovelace",
+    });
+    const controller = new UserController(service);
+    let statusCode: number | undefined;
+    let body = "";
+    const response = {
+      writeHead: (code: number) => {
+        statusCode = code;
+      },
+      end: (responseBody: string) => {
+        body = responseBody;
+      },
+    };
+
+    await controller.handleUpdate(
+      user.id,
+      { email: "ada.updated@example.com", name: "Ada Byron Lovelace" },
+      response as never,
+    );
+
+    expect(statusCode).toBe(200);
+    expect(JSON.parse(body)).toEqual({
+      id: user.id,
+      email: "ada.updated@example.com",
+      name: "Ada Byron Lovelace",
+    });
+  });
+
+  it("returns 404 when updating a missing user", async () => {
+    const controller = new UserController(new UserService(new InMemoryUserRepository()));
+    let statusCode: number | undefined;
+    let body = "";
+    const response = {
+      writeHead: (code: number) => {
+        statusCode = code;
+      },
+      end: (responseBody: string) => {
+        body = responseBody;
+      },
+    };
+
+    await controller.handleUpdate(
+      "missing-user",
+      { email: "missing@example.com", name: "Missing User" },
+      response as never,
+    );
+
+    expect(statusCode).toBe(404);
+    expect(JSON.parse(body)).toEqual({ error: "not_found" });
+  });
+});

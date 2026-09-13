@@ -9,6 +9,7 @@ function createRepository(): UserRepository {
     findByEmail: vi.fn(),
     findById: vi.fn(),
     save: vi.fn(),
+    update: vi.fn(),
   };
 }
 
@@ -81,5 +82,48 @@ describe("UserService", () => {
 
     await expect(service.listUsers()).resolves.toBe(users);
     expect(repository.findAll).toHaveBeenCalledOnce();
+  });
+
+  it("updates an existing user", async () => {
+    const repository = createRepository();
+    const existingUser = new User({
+      id: "user-1",
+      email: "user@example.com",
+      name: "Ada Lovelace",
+    });
+    vi.mocked(repository.findById).mockResolvedValue(existingUser);
+    vi.mocked(repository.findByEmail).mockResolvedValue(undefined);
+    vi.mocked(repository.update).mockResolvedValue(undefined);
+    const service = new UserService(repository);
+
+    await expect(
+      service.updateUser("user-1", {
+        email: "updated@example.com",
+        name: "Ada Byron Lovelace",
+      }),
+    ).resolves.toEqual({
+      id: "user-1",
+      email: "updated@example.com",
+      name: "Ada Byron Lovelace",
+    });
+    expect(repository.update).toHaveBeenCalledWith({
+      id: "user-1",
+      email: "updated@example.com",
+      name: "Ada Byron Lovelace",
+    });
+  });
+
+  it("returns undefined when updating a missing user", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.findById).mockResolvedValue(undefined);
+    const service = new UserService(repository);
+
+    await expect(
+      service.updateUser("missing-user", {
+        email: "user@example.com",
+        name: "Ada Lovelace",
+      }),
+    ).resolves.toBeUndefined();
+    expect(repository.update).not.toHaveBeenCalled();
   });
 });

@@ -35,6 +35,17 @@ const server = createServer(async (request, response) => {
   const userId = userIdMatch?.[1];
 
   if (userId !== undefined) {
+    if (request.method === "PUT") {
+      try {
+        const body = await readRequestBody(request);
+        await userController.handleUpdate(userId, JSON.parse(body), response);
+      } catch {
+        response.writeHead(400, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "invalid_request" }));
+      }
+      return;
+    }
+
     await userController.handleFindById(userId, response);
     return;
   }
