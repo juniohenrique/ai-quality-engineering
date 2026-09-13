@@ -39,6 +39,8 @@ describe("health architecture", () => {
 
     await controller.handleHealth(response as never);
 
-    expect(writes).toEqual([JSON.stringify({ status: "ok", database: "connected" })]);
+    expect(writes).toEqual([
+      JSON.stringify({ status: "ok", database: "connected" }),
+    ]);
   });
 });
