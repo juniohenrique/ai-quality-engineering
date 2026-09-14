@@ -21,6 +21,7 @@ fi
 SLUG=$(echo "$TITLE" \
     | iconv -f utf-8 -t ascii//TRANSLIT 2>/dev/null \
     | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/\b(criar|adicionar|implementar|estudar|documentar|ajustar|corrigir|refatorar|configurar|instalar|investigar|executar|mapear|avaliar|testar|validar)\b//g' \
     | sed -E 's/[^a-z0-9]+/-/g' \
     | sed -E 's/^-+|-+$//g' \
     | cut -c1-50)
