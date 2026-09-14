@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { UserController } from "./user.controller.js";
 import { InMemoryUserRepository } from "../repositories/in-memory-user.repository.js";
 import { UserService } from "../services/user.service.js";
@@ -82,6 +82,73 @@ describe("POST /users", () => {
     expect(JSON.parse(output.getBody())).toEqual({
       error: "invalid_request",
       message: "User email is invalid",
+    });
+  });
+
+  it.each([null, {}, { email: "ada@example.com" }, { name: "Ada Lovelace" }])(
+    "returns 400 for a structurally invalid payload: %s",
+    async (input) => {
+      const createUser = vi.fn();
+      const controller = new UserController({
+        createUser,
+        deleteUser: vi.fn(),
+        findUserById: vi.fn(),
+        listUsers: vi.fn(),
+        updateUser: vi.fn(),
+      });
+      const output = createResponse();
+
+      await controller.handleCreate(input, output.response as never);
+
+      expect(output.getStatusCode()).toBe(400);
+      expect(JSON.parse(output.getBody())).toEqual({
+        error: "invalid_request",
+        message: "Invalid request",
+      });
+      expect(createUser).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns the service error when creation fails", async () => {
+    const controller = new UserController({
+      createUser: vi.fn().mockRejectedValue(new Error("creation failed")),
+      deleteUser: vi.fn(),
+      findUserById: vi.fn(),
+      listUsers: vi.fn(),
+      updateUser: vi.fn(),
+    });
+    const output = createResponse();
+
+    await controller.handleCreate(
+      { email: "ada@example.com", name: "Ada Lovelace" },
+      output.response as never,
+    );
+
+    expect(output.getStatusCode()).toBe(400);
+    expect(JSON.parse(output.getBody())).toEqual({
+      error: "invalid_request",
+      message: "creation failed",
+    });
+  });
+
+  it("uses a generic message when creation throws a non-Error value", async () => {
+    const controller = new UserController({
+      createUser: vi.fn().mockRejectedValue("creation failed"),
+      deleteUser: vi.fn(),
+      findUserById: vi.fn(),
+      listUsers: vi.fn(),
+      updateUser: vi.fn(),
+    });
+    const output = createResponse();
+
+    await controller.handleCreate(
+      { email: "ada@example.com", name: "Ada Lovelace" },
+      output.response as never,
+    );
+
+    expect(JSON.parse(output.getBody())).toEqual({
+      error: "invalid_request",
+      message: "Invalid request",
     });
   });
 });
@@ -220,6 +287,75 @@ describe("DELETE /users/:id", () => {
     expect(JSON.parse(output.getBody())).toEqual({
       error: "not_found",
       message: "User not found",
+    });
+  });
+
+  it.each([null, {}, { email: "ada@example.com" }, { name: "Ada Lovelace" }])(
+    "returns 400 for a structurally invalid payload: %s",
+    async (input) => {
+      const updateUser = vi.fn();
+      const controller = new UserController({
+        createUser: vi.fn(),
+        deleteUser: vi.fn(),
+        findUserById: vi.fn(),
+        listUsers: vi.fn(),
+        updateUser,
+      });
+      const output = createResponse();
+
+      await controller.handleUpdate("user-1", input, output.response as never);
+
+      expect(output.getStatusCode()).toBe(400);
+      expect(JSON.parse(output.getBody())).toEqual({
+        error: "invalid_request",
+        message: "Invalid request",
+      });
+      expect(updateUser).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns the service error when updating fails", async () => {
+    const controller = new UserController({
+      createUser: vi.fn(),
+      deleteUser: vi.fn(),
+      findUserById: vi.fn(),
+      listUsers: vi.fn(),
+      updateUser: vi.fn().mockRejectedValue(new Error("update failed")),
+    });
+    const output = createResponse();
+
+    await controller.handleUpdate(
+      "user-1",
+      { email: "ada@example.com", name: "Ada Lovelace" },
+      output.response as never,
+    );
+
+    expect(output.getStatusCode()).toBe(400);
+    expect(JSON.parse(output.getBody())).toEqual({
+      error: "invalid_request",
+      message: "update failed",
+    });
+  });
+
+  it("uses a generic message when updating throws a non-Error value", async () => {
+    const controller = new UserController({
+      createUser: vi.fn(),
+      deleteUser: vi.fn(),
+      findUserById: vi.fn(),
+      listUsers: vi.fn(),
+      updateUser: vi.fn().mockRejectedValue("update failed"),
+    });
+    const output = createResponse();
+
+    await controller.handleUpdate(
+      "user-1",
+      { email: "ada@example.com", name: "Ada Lovelace" },
+      output.response as never,
+    );
+
+    expect(JSON.parse(output.getBody())).toEqual({
+      error: "invalid_request",
+      message: "Invalid request",
     });
   });
 });

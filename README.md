@@ -130,6 +130,18 @@ npm run lint
 npm run format
 ```
 
+O comando `npm run test:coverage` executa toda a suíte com cobertura V8 e
+gera relatório no terminal, HTML em `coverage/index.html` e LCOV em
+`coverage/lcov.info`. O quality gate exige:
+
+- Lines: 80%
+- Statements: 80%
+- Functions: 80%
+- Branches: 75%
+
+Quando qualquer threshold não é atingido, o Vitest retorna código de erro e o
+job de coverage faz o pipeline falhar.
+
 Os testes sao executados pelo Vitest e ficam ao lado das implementacoes. A
 cobertura atual inclui:
 
