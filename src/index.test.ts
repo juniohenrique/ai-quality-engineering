@@ -21,6 +21,17 @@ describe("health architecture", () => {
     });
   });
 
+  it("returns a degraded state when the database is unavailable", async () => {
+    const service = new HealthService({
+      checkDatabaseHealth: async () => false,
+    });
+
+    await expect(service.getHealth()).resolves.toEqual({
+      status: "degraded",
+      database: "unavailable",
+    });
+  });
+
   it("writes the http response using the controller without touching the database", async () => {
     const writes: string[] = [];
     const response = {
