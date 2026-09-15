@@ -1,13 +1,233 @@
+# ============================================================
+# .gitignore — AI Quality Engineering Platform
+# ============================================================
+# Ignora artefatos de build, dependências, credenciais e arquivos
+# temporários. Preserva configs compartilhadas (VS Code snippets,
+# workflows, documentação).
+# ============================================================
+
+# ------------------------------------------------------------
+# Dependências
+# ------------------------------------------------------------
 node_modules/
+.pnp
+.pnp.js
+.yarn/
+.yarn-cache/
+jspm_packages/
+
+# ------------------------------------------------------------
+# Build / Compilação
+# ------------------------------------------------------------
 dist/
+build/
+out/
+*.tsbuildinfo
+.next/
+.nuxt/
+
+# ------------------------------------------------------------
+# Testes e cobertura
+# ------------------------------------------------------------
 coverage/
-.env
-.env.local
-postgres_data/
-*.log
-.DS_Store
-.vscode/
-.idea/
-playwright-report/
+.nyc_output/
+*.lcov
 test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+allure-results/
+allure-report/
+stryker-tmp/
+reports/mutation/
+.report/
+
+# ------------------------------------------------------------
+# Cache de ferramentas
+# ------------------------------------------------------------
+.eslintcache
+.prettiercache
+.stylelintcache
+.vitest/
+.turbo/
+.parcel-cache/
+.cache/
+
+# ------------------------------------------------------------
+# Logs
+# ------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ------------------------------------------------------------
+# Variáveis de ambiente / Secrets
+# ------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+.aws/
+.ssh/
+
+# ------------------------------------------------------------
+# Sistema operacional
+# ------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ------------------------------------------------------------
+# IDEs
+# ------------------------------------------------------------
+# VS Code — ver regra seletiva abaixo
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.vim/
+*.swp
+*.swo
+
+# ------------------------------------------------------------
+# VS Code — seletivo
+# ------------------------------------------------------------
+# Ignora tudo, exceto arquivos que queremos versionar
+.vscode/*
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ------------------------------------------------------------
+# Docker / Containers
+# ------------------------------------------------------------
+docker-compose.override.yml
+*.pid
+*.seed
+*.pid.lock
+
+# ------------------------------------------------------------
+# Banco de dados local
+# ------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+postgres-data/
+pgdata/
+volumes/
+
+# ------------------------------------------------------------
+# IA — artefatos locais (Ollama, modelos, embeddings)
+# ------------------------------------------------------------
+models/
+*.gguf
+*.bin
+*.safetensors
+ollama-data/
+vector-db/
+.chroma/
+.qdrant/
+.faiss/
+
+# ------------------------------------------------------------
+# IA — datasets grandes e resultados de evals
+# ------------------------------------------------------------
+# Mantém o schema, ignora os outputs gerados
+evals/output/
+evals/results/
+*.eval.json
+*.eval.md
+datasets/generated/
+datasets/tmp/
+
+# ------------------------------------------------------------
+# IA — cache de LLM / prompts
+# ------------------------------------------------------------
+.promptfoo/
+promptfoo-output/
+.cache/llm/
+.llm-cache/
+
+# ------------------------------------------------------------
+# Temporários do fluxo de trabalho (PR body, notas)
+# ------------------------------------------------------------
+# Usado pelo fluxo do Copilot: gerar PR body sem versionar
+.tmp/
 pr_body.md
+*.local.md
+scratch/
+playground/
+*.scratch.*
+
+# ------------------------------------------------------------
+# Backups e arquivos temporários
+# ------------------------------------------------------------
+*.bak
+*.backup
+*.orig
+*.tmp
+*~
+*.old
+*.rej
+
+# ------------------------------------------------------------
+# GitHub Actions — não versionar runs locais
+# ------------------------------------------------------------
+.actrc
+.act/
+
+# ------------------------------------------------------------
+# macOS
+# ------------------------------------------------------------
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# ------------------------------------------------------------
+# Linux
+# ------------------------------------------------------------
+*~
+
+# ------------------------------------------------------------
+# Windows
+# ------------------------------------------------------------
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ------------------------------------------------------------
+# Terraform / IaC (não usado agora, previsto para depois)
+# ------------------------------------------------------------
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+
+# ------------------------------------------------------------
+# Kubernetes (não usado agora, previsto para depois)
+# ------------------------------------------------------------
+kubeconfig
+*.kubeconfig
+helm-charts/
