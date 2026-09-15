@@ -94,6 +94,11 @@ O projeto separa responsabilidades por camada:
 - `src/services`: concentra regras de negocio e orquestra repositorios.
 - `src/repositories`: define contratos e implementa acesso a dados.
 - `src/domain`: contem entidades e suas invariantes.
+- `src/http`: concentra respostas de erro HTTP padronizadas.
+- `src/server.ts`: compoe as dependencias e roteia as requisicoes.
+
+Uma descricao detalhada dos componentes e fluxos esta em
+[`docs/architecture.md`](docs/architecture.md).
 
 ### Health check
 
@@ -110,7 +115,8 @@ O dominio de usuario esta organizado em:
 - `src/domain/user.ts`: entidade `User` com `id`, `email` e `name`.
 - `src/repositories/user.repository.ts`: contrato `UserRepository` com
   operacoes de listagem, busca e persistencia.
-- `src/services/user.service.ts`: criacao e busca de usuarios.
+- `src/services/user.service.ts`: regras de criacao, busca, listagem,
+  atualizacao e remocao de usuarios.
 
 A entidade remove espacos externos, normaliza o e-mail para minusculas e
 valida `id`, `email` e `name`. O servico gera o ID com `randomUUID`, impede
@@ -142,6 +148,10 @@ gera relatório no terminal, HTML em `coverage/index.html` e LCOV em
 Quando qualquer threshold não é atingido, o Vitest retorna código de erro e o
 job de coverage faz o pipeline falhar.
 
+Os testes de integração HTTP ficam em `src/server.integration.test.ts` e
+iniciam o servidor com um repositório de usuários em memória. A suíte valida
+health check, rotas inexistentes e o ciclo completo de usuários.
+
 Os testes sao executados pelo Vitest e ficam ao lado das implementacoes. A
 cobertura atual inclui:
 
@@ -164,17 +174,28 @@ cobertura atual inclui:
 src/
 	controllers/
 		health.controller.ts
+		user.controller.ts
+		user.controller.test.ts
 	domain/
 		user.ts
 		user.test.ts
+	http/
+		error-response.ts
+		error-response.test.ts
 	repositories/
 		health.repository.ts
+		health.repository.test.ts
+		in-memory-user.repository.ts
 		user.repository.ts
 	services/
 		health.service.ts
 		user.service.ts
 		user.service.test.ts
+	server.integration.test.ts
 	index.ts
 	index.test.ts
 	server.ts
 ```
+
+O PostgreSQL é usado pelo health check e é provisionado pelo Docker Compose.
+Os usuários continuam sendo mantidos em memória nesta versão.
