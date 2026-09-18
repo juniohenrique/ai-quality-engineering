@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { projectName } from "./index.js";
-import { HealthController } from "./controllers/health.controller.js";
-import { HealthService } from "./services/health.service.js";
+import { projectName } from "../../src/index.js";
+import { HealthController } from "../../src/controllers/health.controller.js";
+import { HealthService } from "../../src/services/health.service.js";
 
 describe("project bootstrap", () => {
   it("exposes the project name", () => {
@@ -50,8 +50,6 @@ describe("health architecture", () => {
 
     await controller.handleHealth(response as never);
 
-    expect(writes).toEqual([
-      JSON.stringify({ status: "ok", database: "connected" }),
-    ]);
+    expect(writes).toEqual([JSON.stringify({ status: "ok", database: "connected" })]);
   });
 });

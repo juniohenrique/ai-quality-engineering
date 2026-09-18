@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { UserController } from "./user.controller.js";
-import { InMemoryUserRepository } from "../repositories/in-memory-user.repository.js";
-import { UserService } from "../services/user.service.js";
+import { UserController } from "../../../src/controllers/user.controller.js";
+import { InMemoryUserRepository } from "../../../src/repositories/in-memory-user.repository.js";
+import { UserService } from "../../../src/services/user.service.js";
 
 function createResponse() {
   let statusCode: number | undefined;

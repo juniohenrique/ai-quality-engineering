@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { User } from "../domain/user.js";
-import type { UserRepository } from "../repositories/user.repository.js";
-import { UserService } from "./user.service.js";
+import { User } from "../../../src/domain/user.js";
+import type { UserRepository } from "../../../src/repositories/user.repository.js";
+import { UserService } from "../../../src/services/user.service.js";
 
 function createRepository(): UserRepository {
   return {
