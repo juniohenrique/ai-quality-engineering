@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { HealthRepository } from "./health.repository.js";
+import { HealthRepository } from "../../../src/repositories/health.repository.js";
 
 describe("HealthRepository", () => {
   it("returns true when the database query succeeds", async () => {

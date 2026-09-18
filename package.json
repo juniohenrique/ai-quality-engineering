@@ -19,6 +19,7 @@
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run tests/unit --passWithNoTests",
     "test:integration": "vitest run tests/integration --passWithNoTests",
+    "test:e2e": "vitest run tests/e2e --passWithNoTests",
     "test:watch": "vitest"
   },
   "devDependencies": {

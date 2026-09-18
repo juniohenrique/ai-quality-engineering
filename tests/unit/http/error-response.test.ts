@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { writeErrorResponse } from "./error-response.js";
+import { writeErrorResponse } from "../../../src/http/error-response.js";
 
 describe("writeErrorResponse", () => {
   it("writes errors using the standard shape", () => {
