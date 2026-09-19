@@ -47,7 +47,7 @@ describe("serveStatic", () => {
     ).resolves.toBe(false);
   });
 
-  it.each(["/login", "/users"])("serves the %s route", async (url) => {
+  it.each(["/login", "/users", "/user-form"])("serves the %s route", async (url) => {
     const output = createResponse();
 
     await expect(

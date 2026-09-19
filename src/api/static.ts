@@ -26,6 +26,7 @@ export async function serveStatic(
     "/": "/index.html",
     "/login": "/login.html",
     "/users": "/users.html",
+    "/user-form": "/user-form.html",
   };
   const fileName = routeFiles[requestedPath] ?? requestedPath;
   const filePath = resolve(publicDirectory, `.${fileName}`);
