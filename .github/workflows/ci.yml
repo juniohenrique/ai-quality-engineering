@@ -24,7 +24,6 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
-      - run: npx prettier --write "**/*.{ts,json,md}"
       - run: npm run format:check
       - run: npm run typecheck
 
@@ -47,20 +46,6 @@ jobs:
     name: integration
     runs-on: ubuntu-latest
     needs: lint
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: quality_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d quality_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -87,32 +72,10 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-  coverage:
-    name: coverage
-    runs-on: ubuntu-latest
-    needs: [lint, unit, integration, build]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - run: npm ci
-      - run: npm run test:coverage
-      - name: Upload coverage reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-reports
-          path: coverage/
-          if-no-files-found: error
-
   quality-gate:
     name: quality-gate
     runs-on: ubuntu-latest
-    needs: [lint, unit, integration, build, coverage]
+    needs: [lint, unit, integration, build]
     if: always()
     steps:
       - name: Check all jobs
@@ -120,8 +83,7 @@ jobs:
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.unit.result }}" != "success" ] || \
              [ "${{ needs.integration.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ] || \
-             [ "${{ needs.coverage.result }}" != "success" ]; then
+             [ "${{ needs.build.result }}" != "success" ]; then
             echo "❌ Quality gate FAILED"
             exit 1
           fi

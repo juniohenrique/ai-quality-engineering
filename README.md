@@ -17,39 +17,15 @@ Instale as dependencias:
 npm install
 ```
 
-Para executar a aplicacao diretamente, copie `.env.example` para `.env` e
-ajuste as variaveis quando necessario:
+Para executar a aplicacao diretamente, defina `DATABASE_URL` quando quiser
+usar uma conexao diferente da padrao e inicie o servidor:
 
 ```bash
-cp .env.example .env
-npm start
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/quality npm start
 ```
-
-`DATABASE_URL` e obrigatoria e `PORT` usa `3000` por padrao. A aplicacao tenta
-conectar ao PostgreSQL antes de iniciar o servidor e falha rapidamente se a
-configuracao obrigatoria estiver ausente.
 
 O servidor usa a porta `3000` por padrao. A porta pode ser alterada com a
 variavel `PORT`.
-
-### Migrations
-
-As migrations SQL ficam versionadas em `migrations/`. Para criar ou atualizar
-o schema local, execute:
-
-```bash
-npm run migrate:up
-```
-
-Para desfazer a migration mais recente ou criar uma nova migration:
-
-```bash
-npm run migrate:down
-npm run migrate:create -- add_orders_table
-```
-
-O Docker Compose executa `migrate:up` automaticamente antes de iniciar a
-aplicacao.
 
 ## Docker Compose
 
@@ -63,32 +39,7 @@ Verifique a aplicacao:
 
 ```bash
 curl http://localhost:3000/health
-curl http://localhost:3000/users
-curl http://localhost:3000/users/<id>
-curl -X POST http://localhost:3000/users \
-	-H 'content-type: application/json' \
-	-d '{"email":"ada@example.com","name":"Ada Lovelace"}'
-curl -X PUT http://localhost:3000/users/<id> \
-	-H 'content-type: application/json' \
-	-d '{"email":"ada.updated@example.com","name":"Ada Byron Lovelace"}'
-curl -X DELETE http://localhost:3000/users/<id>
 ```
-
-O endpoint `/users` retorna a lista de usuarios cadastrados em JSON. Em
-producao, os usuarios sao persistidos no PostgreSQL; os testes HTTP podem usar
-o repositorio em memoria com `USER_REPOSITORY=memory`.
-O endpoint `/users/:id` retorna o usuario encontrado ou HTTP `404` quando o ID
-nao existe.
-O endpoint `POST /users` cria um usuario e retorna HTTP `201`. Payloads
-invalidos retornam HTTP `400`.
-O endpoint `PUT /users/:id` atualiza um usuario existente e retorna HTTP `200`.
-Quando o ID nao existe, retorna HTTP `404`.
-O endpoint `DELETE /users/:id` remove um usuario e retorna HTTP `204`. Quando o
-ID nao existe, retorna HTTP `404`.
-
-As respostas de erro seguem o formato JSON `{ "error": "...", "message": "..." }`.
-Por exemplo, uma rota inexistente retorna `{ "error": "not_found", "message":
-"Route not found" }`.
 
 O endpoint retorna HTTP `200` e o payload abaixo quando o banco esta
 disponivel:
@@ -118,11 +69,6 @@ O projeto separa responsabilidades por camada:
 - `src/services`: concentra regras de negocio e orquestra repositorios.
 - `src/repositories`: define contratos e implementa acesso a dados.
 - `src/domain`: contem entidades e suas invariantes.
-- `src/http`: concentra respostas de erro HTTP padronizadas.
-- `src/server.ts`: compoe as dependencias e roteia as requisicoes.
-
-Uma descricao detalhada dos componentes e fluxos esta em
-[`docs/architecture.md`](docs/architecture.md).
 
 ### Health check
 
@@ -138,15 +84,13 @@ O dominio de usuario esta organizado em:
 
 - `src/domain/user.ts`: entidade `User` com `id`, `email` e `name`.
 - `src/repositories/user.repository.ts`: contrato `UserRepository` com
-  operacoes de listagem, busca e persistencia.
-- `src/services/user.service.ts`: regras de criacao, busca, listagem,
-  atualizacao e remocao de usuarios.
+  operacoes de busca e persistencia.
+- `src/services/user.service.ts`: criacao e busca de usuarios.
 
 A entidade remove espacos externos, normaliza o e-mail para minusculas e
 valida `id`, `email` e `name`. O servico gera o ID com `randomUUID`, impede
-duplicidade de e-mail e delega a persistencia ao repositorio. O endpoint
-`GET /users`, `GET /users/:id`, `POST /users`, `PUT /users/:id` e
-`DELETE /users/:id` usam um repositorio em memoria.
+duplicidade de e-mail e delega a persistencia ao repositorio. A implementacao
+concreta de persistencia de usuarios ainda nao faz parte deste modulo.
 
 ## Testes e qualidade
 
@@ -154,27 +98,10 @@ Execute os comandos individualmente ou em conjunto:
 
 ```bash
 npm test
-npm run test:coverage
 npm run build
 npm run lint
 npm run format
 ```
-
-O comando `npm run test:coverage` executa toda a suíte com cobertura V8 e
-gera relatório no terminal, HTML em `coverage/index.html` e LCOV em
-`coverage/lcov.info`. O quality gate exige:
-
-- Lines: 80%
-- Statements: 80%
-- Functions: 80%
-- Branches: 75%
-
-Quando qualquer threshold não é atingido, o Vitest retorna código de erro e o
-job de coverage faz o pipeline falhar.
-
-Os testes de integração HTTP ficam em `src/server.integration.test.ts` e
-iniciam o servidor com um repositório de usuários em memória. A suíte valida
-health check, rotas inexistentes e o ciclo completo de usuários.
 
 Os testes sao executados pelo Vitest e ficam ao lado das implementacoes. A
 cobertura atual inclui:
@@ -184,13 +111,6 @@ cobertura atual inclui:
 - normalizacao de e-mail e nome;
 - prevencao de e-mails duplicados;
 - delegacao de busca e persistencia pelo `UserService`.
-- listagem de usuarios pelo endpoint `GET /users`.
-- busca por ID e resposta `404` pelo endpoint `GET /users/:id`.
-- criacao e validacao de usuarios pelo endpoint `POST /users`.
-- atualizacao de usuario e resposta `404` pelo endpoint `PUT /users/:id`.
-- remocao de usuario e resposta `404` pelo endpoint `DELETE /users/:id`.
-- respostas de erro padronizadas com `error` e `message`.
-- testes unitarios do `UserService` com cobertura de 100% no arquivo de servico.
 
 ## Estrutura
 
@@ -198,28 +118,17 @@ cobertura atual inclui:
 src/
 	controllers/
 		health.controller.ts
-		user.controller.ts
-		user.controller.test.ts
 	domain/
 		user.ts
 		user.test.ts
-	http/
-		error-response.ts
-		error-response.test.ts
 	repositories/
 		health.repository.ts
-		health.repository.test.ts
-		in-memory-user.repository.ts
 		user.repository.ts
 	services/
 		health.service.ts
 		user.service.ts
 		user.service.test.ts
-	server.integration.test.ts
 	index.ts
 	index.test.ts
 	server.ts
 ```
-
-O PostgreSQL é usado pelo health check e é provisionado pelo Docker Compose.
-Os usuários continuam sendo mantidos em memória nesta versão.
