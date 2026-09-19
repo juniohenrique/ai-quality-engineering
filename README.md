@@ -162,6 +162,9 @@ Execute os comandos individualmente ou em conjunto:
 
 ```bash
 npm test
+npm run test:unit
+npm run test:integration
+npm run test:e2e
 npm run test:coverage
 npm run build
 npm run lint
@@ -183,6 +186,21 @@ job de coverage faz o pipeline falhar.
 Os testes de integração HTTP ficam em `src/server.integration.test.ts` e
 iniciam o servidor com um repositório de usuários em memória. A suíte valida
 health check, rotas inexistentes e o ciclo completo de usuários.
+
+### Testes E2E
+
+Os testes E2E usam Playwright e validam fluxos completos no browser. O comando
+`npm run test:e2e` inicia o servidor automaticamente, executa os testes e gera
+relatório HTML em `playwright-report/`. A configuração está em
+`playwright.config.ts` e define:
+
+- Base URL: `http://localhost:3000`
+- Timeout: 30 segundos por teste
+- Retries: 1 em CI, 0 local
+- Reporter: HTML + list
+
+O Playwright requer browsers instalados. Execute `npx playwright install` após
+adicionar `@playwright/test`.
 
 Os testes sao executados pelo Vitest e ficam ao lado das implementacoes. A
 cobertura atual inclui:
