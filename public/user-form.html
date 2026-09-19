@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Usuário | AI Quality Engineering</title>
+  </head>
+  <body>
+    <main>
+      <h1>Novo usuário</h1>
+      <form data-testid="user-form">
+        <label for="user-name">Nome</label>
+        <input data-testid="user-name" id="user-name" name="name" required />
+        <label for="user-email">E-mail</label>
+        <input data-testid="user-email" id="user-email" name="email" required type="email" />
+        <button data-testid="user-save" type="submit">Salvar</button>
+        <a data-testid="user-cancel" href="/users">Cancelar</a>
+      </form>
+      <p data-testid="user-message" role="status"></p>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

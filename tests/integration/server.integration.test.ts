@@ -1,15 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { closeDatabase, resetDatabase } from "../setup/db.js";
+import { UserApiClient } from "../helpers/user-api-client.js";
 
 const port = 3100 + Math.floor(Math.random() * 1000);
 const baseUrl = `http://127.0.0.1:${port}`;
 const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
-
-interface ApiUser {
-  id: string;
-  email: string;
-  name: string;
-}
+const userApi = new UserApiClient(baseUrl);
 
 beforeAll(async () => {
   process.env.PORT = String(port);
@@ -26,7 +22,7 @@ beforeAll(async () => {
 
   for (let attempt = 0; attempt < 50; attempt += 1) {
     try {
-      await fetch(`${baseUrl}/users`);
+      await userApi.getAll();
       return;
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -52,68 +48,76 @@ beforeEach(async () => {
 
 describe("HTTP API", () => {
   it("supports health, users, and missing route requests", async () => {
-    const health = await fetch(`${baseUrl}/health`);
+    const health = await userApi.getHealth();
     expect(health.status).toBe(runDatabaseIntegration ? 200 : 503);
-    expect(await health.json()).toEqual({
+    expect(health.body).toEqual({
       status: runDatabaseIntegration ? "ok" : "degraded",
       database: runDatabaseIntegration ? "connected" : "unavailable",
     });
 
-    const users = await fetch(`${baseUrl}/users`);
+    const users = await userApi.getAll();
     expect(users.status).toBe(200);
-    expect(await users.json()).toEqual([]);
+    expect(users.body).toEqual([]);
 
-    const missingRoute = await fetch(`${baseUrl}/unknown`);
+    const missingRoute = await userApi.request<{ error: string; message: string }>("/unknown");
     expect(missingRoute.status).toBe(404);
-    expect(await missingRoute.json()).toEqual({
+    expect(missingRoute.body).toEqual({
       error: "not_found",
       message: "Route not found",
     });
   });
 
   it("creates, finds, updates, and deletes a user", async () => {
-    const created = await fetch(`${baseUrl}/users`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "ada@example.com", name: "Ada Lovelace" }),
-    });
+    const created = await userApi.create({ email: "ada@example.com", name: "Ada Lovelace" });
     expect(created.status).toBe(201);
-    const user = (await created.json()) as ApiUser;
+    const user = created.body;
     expect(user).toMatchObject({ email: "ada@example.com", name: "Ada Lovelace" });
 
-    const found = await fetch(`${baseUrl}/users/${user.id}`);
+    const found = await userApi.getById(user.id);
     expect(found.status).toBe(200);
-    expect(await found.json()).toEqual(user);
+    expect(found.body).toEqual(user);
 
-    const updated = await fetch(`${baseUrl}/users/${user.id}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "ada.updated@example.com", name: "Ada Byron Lovelace" }),
+    const updated = await userApi.update(user.id, {
+      email: "ada.updated@example.com",
+      name: "Ada Byron Lovelace",
     });
     expect(updated.status).toBe(200);
-    expect(await updated.json()).toMatchObject({
+    expect(updated.body).toMatchObject({
       id: user.id,
       email: "ada.updated@example.com",
       name: "Ada Byron Lovelace",
     });
 
-    const deleted = await fetch(`${baseUrl}/users/${user.id}`, { method: "DELETE" });
+    const deleted = await userApi.delete(user.id);
     expect(deleted.status).toBe(204);
   });
 
   it("rejects invalid POST and PUT payloads", async () => {
-    const invalidPost = await fetch(`${baseUrl}/users`, {
+    const invalidPost = await userApi.request("/users", {
       method: "POST",
-      headers: { "content-type": "application/json" },
       body: "{invalid",
     });
     expect(invalidPost.status).toBe(400);
 
-    const invalidPut = await fetch(`${baseUrl}/users/user-1`, {
+    const invalidPut = await userApi.request("/users/user-1", {
       method: "PUT",
-      headers: { "content-type": "application/json" },
       body: "{invalid",
     });
     expect(invalidPut.status).toBe(400);
+  });
+
+  it("authenticates the mock login endpoint", async () => {
+    const login = await userApi.request<{ token: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "test@example.com", password: "password" }),
+    });
+    expect(login.status).toBe(200);
+    expect(login.body).toEqual({ token: "fake-token" });
+
+    const invalidLogin = await userApi.request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "test@example.com", password: "wrong" }),
+    });
+    expect(invalidLogin.status).toBe(401);
   });
 });

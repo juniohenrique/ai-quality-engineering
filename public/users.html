@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Usuários | AI Quality Engineering</title>
+  </head>
+  <body>
+    <main>
+      <h1>Usuários</h1>
+      <p data-testid="user-message" role="status"></p>
+      <a data-testid="user-create-button" href="/user-form">Criar usuário</a>
+      <table>
+        <thead>
+          <tr><th>Nome</th><th>E-mail</th><th>Ações</th></tr>
+        </thead>
+        <tbody data-testid="user-list"></tbody>
+      </table>
+      <a data-testid="users-home-link" href="/">Início</a>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
