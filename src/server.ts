@@ -11,6 +11,7 @@ import { PostgresUserRepository } from "./repositories/postgres-user.repository.
 import { HealthService } from "./services/health.service.js";
 import { UserService } from "./services/user.service.js";
 import { writeErrorResponse } from "./http/error-response.js";
+import { AuthController } from "./controllers/auth.controller.js";
 
 const { port, databaseUrl } = loadEnv();
 const pool = createPool(databaseUrl);
@@ -24,6 +25,7 @@ const userRepository =
     : new PostgresUserRepository(pool);
 const userService = new UserService(userRepository);
 const userController = new UserController(userService);
+const authController = new AuthController();
 
 const readRequestBody = async (request: IncomingMessage): Promise<string> => {
   const chunks: Buffer[] = [];
@@ -39,6 +41,16 @@ const server = createServer(async (request, response) => {
   const requestUrl = new URL(request.url ?? "/", "http://localhost");
 
   if (await serveStatic(request, response)) {
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/login" && request.method === "POST") {
+    try {
+      const body = await readRequestBody(request);
+      await authController.handleLogin(JSON.parse(body), response);
+    } catch {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+    }
     return;
   }
 
