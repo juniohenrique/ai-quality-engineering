@@ -1,6 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
-import { Pool } from "pg";
+import { closeDatabase, resetDatabase, testDatabase } from "../setup/db.js";
 import { User } from "../../src/domain/user.js";
 import {
   EmailAlreadyExistsError,
@@ -9,21 +9,19 @@ import {
 
 const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
 const describeDatabase = runDatabaseIntegration ? describe : describe.skip;
-let pool: Pool;
 let repository: PostgresUserRepository;
 
 describeDatabase("PostgresUserRepository integration", () => {
   beforeAll(async () => {
-    pool = new Pool({
-      connectionString:
-        process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/quality",
-    });
-    await pool.query("TRUNCATE TABLE users");
-    repository = new PostgresUserRepository(pool);
+    repository = new PostgresUserRepository(testDatabase);
+  });
+
+  beforeEach(async () => {
+    await resetDatabase();
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeDatabase();
   });
 
   it("persists a user across repository instances", async () => {
@@ -34,7 +32,7 @@ describeDatabase("PostgresUserRepository integration", () => {
     });
 
     await repository.save(user);
-    const restartedRepository = new PostgresUserRepository(pool);
+    const restartedRepository = new PostgresUserRepository(testDatabase);
 
     await expect(restartedRepository.findById(user.id)).resolves.toEqual(user);
     await expect(restartedRepository.remove(user.id)).resolves.toBe(true);

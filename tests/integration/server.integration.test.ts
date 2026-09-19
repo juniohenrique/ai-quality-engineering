@@ -1,7 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { closeDatabase, resetDatabase } from "../setup/db.js";
 
 const port = 3100 + Math.floor(Math.random() * 1000);
 const baseUrl = `http://127.0.0.1:${port}`;
+const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
 
 interface ApiUser {
   id: string;
@@ -11,8 +13,15 @@ interface ApiUser {
 
 beforeAll(async () => {
   process.env.PORT = String(port);
-  process.env.DATABASE_URL = "postgresql://127.0.0.1:1/unavailable";
-  process.env.USER_REPOSITORY = "memory";
+  process.env.DATABASE_URL = runDatabaseIntegration
+    ? (process.env.DATABASE_URL_TEST ?? "postgres://postgres:postgres@localhost:5433/quality_test")
+    : "postgresql://127.0.0.1:1/unavailable";
+  if (!runDatabaseIntegration) {
+    process.env.USER_REPOSITORY = "memory";
+  }
+  if (runDatabaseIntegration) {
+    await resetDatabase();
+  }
   await import("../../src/server.js");
 
   for (let attempt = 0; attempt < 50; attempt += 1) {
@@ -30,15 +39,24 @@ beforeAll(async () => {
 afterAll(async () => {
   process.emit("SIGTERM");
   await new Promise((resolve) => setTimeout(resolve, 50));
+  if (runDatabaseIntegration) {
+    await closeDatabase();
+  }
+});
+
+beforeEach(async () => {
+  if (runDatabaseIntegration) {
+    await resetDatabase();
+  }
 });
 
 describe("HTTP API", () => {
   it("supports health, users, and missing route requests", async () => {
     const health = await fetch(`${baseUrl}/health`);
-    expect(health.status).toBe(503);
+    expect(health.status).toBe(runDatabaseIntegration ? 200 : 503);
     expect(await health.json()).toEqual({
-      status: "degraded",
-      database: "unavailable",
+      status: runDatabaseIntegration ? "ok" : "degraded",
+      database: runDatabaseIntegration ? "connected" : "unavailable",
     });
 
     const users = await fetch(`${baseUrl}/users`);

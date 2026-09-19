@@ -13,5 +13,11 @@ correspondente.
 Os comandos disponíveis são:
 
 - `npm run test:unit`
+- `docker compose up -d db-test`
 - `npm run test:integration`
 - `npm run test:e2e`
+
+Os testes de integração usam `DATABASE_URL_TEST`, aplicam as migrations antes
+da execução e chamam `resetDatabase()` antes de cada teste. O banco padrão é
+`postgres://postgres:postgres@localhost:5433/quality_test`; altere a variável
+para usar outro banco de teste.
