@@ -23,8 +23,9 @@ flowchart LR
 
 `src/server.ts` e o composition root da aplicacao. Ele:
 
-- le `PORT` e `DATABASE_URL` das variaveis de ambiente;
-- cria o pool do PostgreSQL;
+- carrega e valida `PORT` e `DATABASE_URL` em `src/config/env.ts`;
+- cria o pool do PostgreSQL em `src/db/client.ts`;
+- tenta conectar ao banco com retry no boot;
 - compoe controllers, services e repositories;
 - interpreta metodo, caminho e corpo das requisicoes;
 - encerra o servidor e o pool nos sinais `SIGINT` e `SIGTERM`.
@@ -57,6 +58,11 @@ falha.
 Os repositories isolam o acesso a dados por meio de portas/interfaces.
 
 - `HealthRepository` executa `SELECT 1` no PostgreSQL.
+
+O modulo `src/db/client.ts` tambem executa `SELECT 1` ate tres vezes durante o
+boot. Se o banco permanecer indisponivel, o servidor inicia normalmente para
+que o endpoint `/health` reporte o estado degradado.
+
 - `InMemoryUserRepository` implementa a persistencia temporaria de usuarios.
 - `UserRepository` define as operacoes necessarias pelo `UserService`.
 

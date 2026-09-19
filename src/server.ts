@@ -1,7 +1,8 @@
 import { createServer, type IncomingMessage } from "node:http";
 import { URL } from "node:url";
-import { Pool } from "pg";
+import { loadEnv } from "./config/env.js";
 import { HealthController } from "./controllers/health.controller.js";
+import { createPool, waitForDatabase } from "./db/client.js";
 import { UserController } from "./controllers/user.controller.js";
 import { HealthRepository } from "./repositories/health.repository.js";
 import { InMemoryUserRepository } from "./repositories/in-memory-user.repository.js";
@@ -9,10 +10,8 @@ import { HealthService } from "./services/health.service.js";
 import { UserService } from "./services/user.service.js";
 import { writeErrorResponse } from "./http/error-response.js";
 
-const port = Number(process.env.PORT ?? 3000);
-const databaseUrl =
-  process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/quality";
-const pool = new Pool({ connectionString: databaseUrl });
+const { port, databaseUrl } = loadEnv();
+const pool = createPool(databaseUrl);
 
 const healthRepository = new HealthRepository(pool);
 const healthService = new HealthService(healthRepository);
@@ -77,6 +76,12 @@ const server = createServer(async (request, response) => {
 
   await healthController.handleHealth(response);
 });
+
+const databaseReady = await waitForDatabase(pool);
+
+if (!databaseReady) {
+  console.error("Database unavailable after retrying connection");
+}
 
 server.listen(port, () => {
   console.log(`AI Quality Engineering app listening on port ${port}`);

@@ -17,12 +17,17 @@ Instale as dependencias:
 npm install
 ```
 
-Para executar a aplicacao diretamente, defina `DATABASE_URL` quando quiser
-usar uma conexao diferente da padrao e inicie o servidor:
+Para executar a aplicacao diretamente, copie `.env.example` para `.env` e
+ajuste as variaveis quando necessario:
 
 ```bash
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/quality npm start
+cp .env.example .env
+npm start
 ```
+
+`DATABASE_URL` e obrigatoria e `PORT` usa `3000` por padrao. A aplicacao tenta
+conectar ao PostgreSQL antes de iniciar o servidor e falha rapidamente se a
+configuracao obrigatoria estiver ausente.
 
 O servidor usa a porta `3000` por padrao. A porta pode ser alterada com a
 variavel `PORT`.
