@@ -64,12 +64,14 @@ O modulo `src/db/client.ts` tambem executa `SELECT 1` ate tres vezes durante o
 boot. Se o banco permanecer indisponivel, o servidor inicia normalmente para
 que o endpoint `/health` reporte o estado degradado.
 
-- `InMemoryUserRepository` implementa a persistencia temporaria de usuarios.
+- `PostgresUserRepository` implementa a persistencia de usuarios em PostgreSQL.
+- `InMemoryUserRepository` implementa a persistencia temporaria usada nos testes.
 - `UserRepository` define as operacoes necessarias pelo `UserService`.
 
-O uso de um repository em memoria para usuarios permite validar a API sem
-exigir banco para o dominio de usuarios. O PostgreSQL permanece necessario para
-o health check configurado na aplicacao.
+O composition root usa `PostgresUserRepository` por padrao e permite selecionar
+`InMemoryUserRepository` com `USER_REPOSITORY=memory` para testes HTTP isolados.
+O `PostgresUserRepository` usa queries parametrizadas e mapeia a constraint
+UNIQUE de email para `EMAIL_ALREADY_EXISTS`.
 
 ### Migrations
 
