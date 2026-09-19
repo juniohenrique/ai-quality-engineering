@@ -41,6 +41,7 @@ Se duas opções se aplicam, prefira a **mais específica** (domínio > técnico
 serviço, controller, rotas e testes específicos de usuário.
 
 **Onde aparece:**
+
 - `src/domain/user*`
 - `src/controllers/user*`
 - `src/services/user*`
@@ -48,6 +49,7 @@ serviço, controller, rotas e testes específicos de usuário.
 - `tests/**/user*`
 
 **Exemplos:**
+
 ```
 feat(users): implementa GET /users [S01-05]
 feat(users): adiciona validação de email no UserService [S01-04]
@@ -64,12 +66,14 @@ test(users): adiciona teste unitário do UserService [S01-11]
 idempotência, concorrência.
 
 **Onde aparece:**
+
 - `src/domain/payment*`
 - `src/controllers/payment*`
 - `src/services/payment*`
 - `tests/**/payment*`
 
 **Exemplos:**
+
 ```
 feat(payments): implementa POST /payments [S04-07]
 feat(payments): adiciona idempotency key [S04-08]
@@ -83,11 +87,13 @@ test(payments): adiciona teste concorrente [S04-10]
 **O que cobre:** Mensageria — producer, consumer, retry, DLQ, correlation ID.
 
 **Onde aparece:**
+
 - `src/queue/**`
 - `docker-compose.yml` (serviço RabbitMQ)
 - `tests/**/queue*`
 
 **Exemplos:**
+
 ```
 feat(queue): adiciona producer de mensagens [S05-02]
 feat(queue): implementa retry e DLQ [S05-05, S05-06]
@@ -104,12 +110,14 @@ test(queue): adiciona teste de mensagem duplicada [S05-07]
 serialização de request/response.
 
 **Onde aparece:**
+
 - `src/index.ts`
 - `src/routes/**`
 - `src/middlewares/**`
 - `src/controllers/**` (quando é infra, não domínio)
 
 **Exemplos:**
+
 ```
 feat(api): adiciona servidor HTTP com GET /health [S01-03]
 feat(api): adiciona error handler global [S01-10]
@@ -126,6 +134,7 @@ refactor(api): extrai middleware de validação [S01-07]
 de banco, test runner, configuração geral de testes.
 
 **Onde aparece:**
+
 - `tests/factories/**`
 - `tests/fixtures/**`
 - `tests/setup/**`
@@ -133,6 +142,7 @@ de banco, test runner, configuração geral de testes.
 - `playwright.config.*`
 
 **Exemplos:**
+
 ```
 test(tests): adiciona UserFactory [S02-02]
 test(tests): cria estrutura de diretórios [S02-01]
@@ -152,11 +162,13 @@ chore(tests): configura database reset entre testes [S02-07]
 autenticação, autorização, IDOR, rate limiting, prompt injection, data leakage.
 
 **Onde aparece:**
+
 - `tests/security/**`
 - `security/**`
 - `docs/threat-model.md`
 
 **Exemplos:**
+
 ```
 test(security): adiciona authentication test suite [S06-01]
 test(security): adiciona teste de IDOR em GET /users/:id [S06-03]
@@ -172,10 +184,12 @@ docs(security): documenta threat model de LLM [S11-11]
 p95/p99, thresholds, gargalos.
 
 **Onde aparece:**
+
 - `tests/performance/**`
 - `reports/performance.md`
 
 **Exemplos:**
+
 ```
 feat(perf): configura k6 e baseline test [S06-07, S06-08]
 feat(perf): adiciona stress test [S06-10]
@@ -190,11 +204,13 @@ docs(perf): documenta bottleneck de p95 [S06-12]
 correlation ID, dashboards.
 
 **Onde aparece:**
+
 - `src/observability/**`
 - `observability/**` (configs de Grafana, Prometheus)
 - `tests/observability/**`
 
 **Exemplos:**
+
 ```
 feat(observability): configura OpenTelemetry [S07-01]
 feat(observability): instrumenta HTTP com spans [S07-02]
@@ -211,6 +227,7 @@ feat(observability): adiciona correlation ID aos logs [S07-05]
 (Dockerfile, docker-compose), dependências de build.
 
 **Onde aparece:**
+
 - `.github/workflows/**`
 - `Dockerfile`
 - `docker-compose.yml`
@@ -218,6 +235,7 @@ feat(observability): adiciona correlation ID aos logs [S07-05]
 - `Makefile`
 
 **Exemplos:**
+
 ```
 chore(ci): adiciona workflow de CI [S01-01]
 feat(ci): adiciona quality gate [S07-13]
@@ -236,6 +254,7 @@ reprodutibilidade local.
 Prettier, tsconfig, gitignore, env vars, estrutura de pastas.
 
 **Onde aparece:**
+
 - `tsconfig.json`
 - `.eslintrc.*`
 - `.prettierrc.*`
@@ -244,6 +263,7 @@ Prettier, tsconfig, gitignore, env vars, estrutura de pastas.
 - `src/**/index.ts` (barrels, quando é só export)
 
 **Exemplos:**
+
 ```
 chore(config): configura TypeScript e tsconfig [S01-01]
 chore(config): adiciona ESLint e Prettier [S01-02]
@@ -258,6 +278,7 @@ chore(config): adiciona .gitignore do projeto [S01-01]
 learning-log.md, ADRs, CONTRIBUTING, este arquivo de SCOPES.
 
 **Onde aparece:**
+
 - `README.md`
 - `docs/**`
 - `CONTRIBUTING.md`
@@ -266,6 +287,7 @@ learning-log.md, ADRs, CONTRIBUTING, este arquivo de SCOPES.
 - `.github/ISSUE_TEMPLATE/**`
 
 **Exemplos:**
+
 ```
 docs(docs): adiciona README inicial [S01-13]
 docs(docs): cria architecture.md com trade-offs [S01-13]
@@ -282,6 +304,7 @@ docs(docs): documenta estratégia de contract testing [S03-06]
 red teaming de IA, structured output.
 
 **Onde aparece:**
+
 - `src/ai/**`
 - `ai/**`
 - `tests/ai/**`
@@ -289,6 +312,7 @@ red teaming de IA, structured output.
 - `datasets/**`
 
 **Exemplos:**
+
 ```
 feat(ai): adiciona endpoint POST /ai/answer [S09-05]
 feat(ai): configura Promptfoo para evals [S10-01]
@@ -337,29 +361,29 @@ Se você precisa de um scope que não existe, primeiro:
 
 ## 📊 Mapeamento rápido — Issue → Scope
 
-| Issue | Tipo | Scope |
-|---|---|---|
-| S01-01 Bootstrap TS | `chore` | `config` |
-| S01-02 Docker | `chore` | `ci` |
-| S01-03 Servidor HTTP | `feat` | `api` |
-| S01-04 a S01-12 (users) | `feat`/`test` | `users` |
-| S01-13 README | `docs` | `docs` |
-| S02-01 a S02-07 (infra test) | `test`/`chore` | `tests` |
-| S02-08 a S02-14 (E2E) | `test` | `tests` (infra) ou `users` (fluxo) |
-| S03-01 a S03-06 (Pact) | `test` | `tests` |
-| S03-07 a S03-13 (fast-check) | `test` | `tests` |
-| S04-01 a S04-05 (Stryker) | `test` | `tests` |
-| S04-06 a S04-11 (payments) | `feat`/`test` | `payments` |
-| S05-01 a S05-12 (queue) | `feat`/`test` | `queue` |
-| S06-01 a S06-06 (security) | `test` | `security` |
-| S06-07 a S06-12 (k6) | `feat` | `perf` |
-| S07-01 a S07-06 (OTel) | `feat` | `observability` |
-| S07-07 a S07-13 (CI) | `chore`/`feat` | `ci` |
-| S08-01 a S08-10 (strategy) | `docs` | `docs` |
-| S09-01 a S09-14 (LLM) | `feat`/`test` | `ai` |
-| S10-01 a S10-18 (evals + RAG) | `feat`/`test` | `ai` |
-| S11-01 a S11-11 (security + agents) | `feat`/`test` | `ai` |
-| S12-01 a S12-08 (MCP + gate) | `feat` | `ai` |
+| Issue                               | Tipo           | Scope                              |
+| ----------------------------------- | -------------- | ---------------------------------- |
+| S01-01 Bootstrap TS                 | `chore`        | `config`                           |
+| S01-02 Docker                       | `chore`        | `ci`                               |
+| S01-03 Servidor HTTP                | `feat`         | `api`                              |
+| S01-04 a S01-12 (users)             | `feat`/`test`  | `users`                            |
+| S01-13 README                       | `docs`         | `docs`                             |
+| S02-01 a S02-07 (infra test)        | `test`/`chore` | `tests`                            |
+| S02-08 a S02-14 (E2E)               | `test`         | `tests` (infra) ou `users` (fluxo) |
+| S03-01 a S03-06 (Pact)              | `test`         | `tests`                            |
+| S03-07 a S03-13 (fast-check)        | `test`         | `tests`                            |
+| S04-01 a S04-05 (Stryker)           | `test`         | `tests`                            |
+| S04-06 a S04-11 (payments)          | `feat`/`test`  | `payments`                         |
+| S05-01 a S05-12 (queue)             | `feat`/`test`  | `queue`                            |
+| S06-01 a S06-06 (security)          | `test`         | `security`                         |
+| S06-07 a S06-12 (k6)                | `feat`         | `perf`                             |
+| S07-01 a S07-06 (OTel)              | `feat`         | `observability`                    |
+| S07-07 a S07-13 (CI)                | `chore`/`feat` | `ci`                               |
+| S08-01 a S08-10 (strategy)          | `docs`         | `docs`                             |
+| S09-01 a S09-14 (LLM)               | `feat`/`test`  | `ai`                               |
+| S10-01 a S10-18 (evals + RAG)       | `feat`/`test`  | `ai`                               |
+| S11-01 a S11-11 (security + agents) | `feat`/`test`  | `ai`                               |
+| S12-01 a S12-08 (MCP + gate)        | `feat`         | `ai`                               |
 
 ---
 
@@ -376,6 +400,6 @@ Se você precisa de um scope que não existe, primeiro:
 
 ## 🔄 Histórico de mudanças
 
-| Data | Mudança | Motivo |
-|---|---|---|
+| Data      | Mudança               | Motivo                       |
+| --------- | --------------------- | ---------------------------- |
 | (inicial) | Criação com 12 scopes | Definição inicial do projeto |
