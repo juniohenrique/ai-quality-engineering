@@ -1,0 +1,46 @@
+name: Audit Merge Strategy
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  audit:
+    name: audit-merge-strategy
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check merge strategy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SOURCE="${{ github.event.pull_request.head.ref }}"
+          TARGET="${{ github.event.pull_request.base.ref }}"
+          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+
+          PARENTS=$(gh api repos/${{ github.repository }}/commits/$MERGE_SHA \
+            --jq '.parents | length')
+
+          echo "Origem:  $SOURCE"
+          echo "Destino: $TARGET"
+          echo "Merge commit parents: $PARENTS"
+
+          if [[ "$SOURCE" =~ ^(feature|bugfix|docs)/ ]] && [ "$TARGET" = "develop" ]; then
+            if [ "$PARENTS" -gt 1 ]; then
+              echo "⚠️  ALERTA: $SOURCE → $TARGET deveria ser SQUASH, mas foi MERGE COMMIT"
+              exit 0
+            else
+              echo "✅ Squash correto para $SOURCE → $TARGET"
+            fi
+          fi
+
+          if [[ "$SOURCE" =~ ^(release|hotfix)/ ]]; then
+            if [ "$PARENTS" -eq 1 ]; then
+              echo "⚠️  ALERTA: $SOURCE deveria ser MERGE COMMIT, mas foi SQUASH"
+              exit 0
+            else
+              echo "✅ Merge commit correto para $SOURCE"
+            fi
+          fi
+
+          echo "✅ Estratégia de merge validada"

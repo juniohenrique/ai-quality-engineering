@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { projectName } from "./index.js";
-import { HealthController } from "./controllers/health.controller.js";
-import { HealthService } from "./services/health.service.js";
+import { projectName } from "../../src/index.js";
+import { HealthController } from "../../src/controllers/health.controller.js";
+import { HealthService } from "../../src/services/health.service.js";
 
 describe("project bootstrap", () => {
   it("exposes the project name", () => {
@@ -18,6 +18,17 @@ describe("health architecture", () => {
     await expect(service.getHealth()).resolves.toEqual({
       status: "ok",
       database: "connected",
+    });
+  });
+
+  it("returns a degraded state when the database is unavailable", async () => {
+    const service = new HealthService({
+      checkDatabaseHealth: async () => false,
+    });
+
+    await expect(service.getHealth()).resolves.toEqual({
+      status: "degraded",
+      database: "unavailable",
     });
   });
 
