@@ -23,4 +23,18 @@ describe("UserFactory", () => {
       name: "Grace Hopper",
     });
   });
+
+  it("creates a deterministic batch with isolated IDs", () => {
+    expect(UserFactory.createMany(3)).toEqual([
+      UserFactory.create({ id: "user-1" }),
+      UserFactory.create({ id: "user-2" }),
+      UserFactory.create({ id: "user-3" }),
+    ]);
+  });
+
+  it.each([-1, 1.5])("rejects an invalid count: %s", (count) => {
+    expect(() => UserFactory.createMany(count)).toThrow(
+      "User count must be a non-negative integer",
+    );
+  });
 });
