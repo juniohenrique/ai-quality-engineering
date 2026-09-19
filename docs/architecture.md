@@ -26,6 +26,7 @@ flowchart LR
 - carrega e valida `PORT` e `DATABASE_URL` em `src/config/env.ts`;
 - cria o pool do PostgreSQL em `src/db/client.ts`;
 - tenta conectar ao banco com retry no boot;
+- executa as migrations versionadas antes de iniciar no Docker Compose;
 - compoe controllers, services e repositories;
 - interpreta metodo, caminho e corpo das requisicoes;
 - encerra o servidor e o pool nos sinais `SIGINT` e `SIGTERM`.
@@ -69,6 +70,13 @@ que o endpoint `/health` reporte o estado degradado.
 O uso de um repository em memoria para usuarios permite validar a API sem
 exigir banco para o dominio de usuarios. O PostgreSQL permanece necessario para
 o health check configurado na aplicacao.
+
+### Migrations
+
+As migrations ficam em `migrations/` como pares `.up.sql` e `.down.sql`. O
+runner `scripts/migrate.js` registra migrations aplicadas em `_migrations`,
+executa cada arquivo dentro de uma transacao e permite aplicar, desfazer a
+ultima ou criar uma nova migration.
 
 ### Domain
 
