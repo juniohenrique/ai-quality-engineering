@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { User } from "../../../src/domain/user.js";
+import { User } from "./user.js";
 
 describe("User", () => {
   it("stores a valid id, email and name", () => {
