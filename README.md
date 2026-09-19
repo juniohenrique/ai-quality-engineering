@@ -32,6 +32,25 @@ configuracao obrigatoria estiver ausente.
 O servidor usa a porta `3000` por padrao. A porta pode ser alterada com a
 variavel `PORT`.
 
+### Migrations
+
+As migrations SQL ficam versionadas em `migrations/`. Para criar ou atualizar
+o schema local, execute:
+
+```bash
+npm run migrate:up
+```
+
+Para desfazer a migration mais recente ou criar uma nova migration:
+
+```bash
+npm run migrate:down
+npm run migrate:create -- add_orders_table
+```
+
+O Docker Compose executa `migrate:up` automaticamente antes de iniciar a
+aplicacao.
+
 ## Docker Compose
 
 O Compose inicia a aplicacao e um PostgreSQL 16 com health check:
