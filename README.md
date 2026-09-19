@@ -74,9 +74,9 @@ curl -X PUT http://localhost:3000/users/<id> \
 curl -X DELETE http://localhost:3000/users/<id>
 ```
 
-O endpoint `/users` retorna a lista de usuarios cadastrados em JSON. Nesta
-versao, os usuarios sao mantidos em memoria enquanto a aplicacao esta em
-execucao.
+O endpoint `/users` retorna a lista de usuarios cadastrados em JSON. Em
+producao, os usuarios sao persistidos no PostgreSQL; os testes HTTP podem usar
+o repositorio em memoria com `USER_REPOSITORY=memory`.
 O endpoint `/users/:id` retorna o usuario encontrado ou HTTP `404` quando o ID
 nao existe.
 O endpoint `POST /users` cria um usuario e retorna HTTP `201`. Payloads

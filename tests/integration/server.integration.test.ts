@@ -12,6 +12,7 @@ interface ApiUser {
 beforeAll(async () => {
   process.env.PORT = String(port);
   process.env.DATABASE_URL = "postgresql://127.0.0.1:1/unavailable";
+  process.env.USER_REPOSITORY = "memory";
   await import("../../src/server.js");
 
   for (let attempt = 0; attempt < 50; attempt += 1) {

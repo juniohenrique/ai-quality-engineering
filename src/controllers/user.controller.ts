@@ -23,10 +23,11 @@ export class UserController {
       response.writeHead(201, { "content-type": "application/json" });
       response.end(JSON.stringify(user));
     } catch (error) {
+      const statusCode = getUserErrorStatus(error);
       writeErrorResponse(
         response,
-        400,
-        "invalid_request",
+        statusCode,
+        statusCode === 409 ? "email_already_exists" : "invalid_request",
         error instanceof Error ? error.message : "Invalid request",
       );
     }
@@ -68,10 +69,11 @@ export class UserController {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify(user));
     } catch (error) {
+      const statusCode = getUserErrorStatus(error);
       writeErrorResponse(
         response,
-        400,
-        "invalid_request",
+        statusCode,
+        statusCode === 409 ? "email_already_exists" : "invalid_request",
         error instanceof Error ? error.message : "Invalid request",
       );
     }
@@ -105,3 +107,11 @@ function isCreateUserInput(input: unknown): input is CreateUserInput {
 }
 
 const isUpdateUserInput = isCreateUserInput satisfies (input: unknown) => input is UpdateUserInput;
+
+function getUserErrorStatus(error: unknown): number {
+  return isUserError(error) && error.code === "EMAIL_ALREADY_EXISTS" ? 409 : 400;
+}
+
+function isUserError(error: unknown): error is { code: string } {
+  return typeof error === "object" && error !== null && "code" in error;
+}
