@@ -86,6 +86,13 @@ Quando o ID nao existe, retorna HTTP `404`.
 O endpoint `DELETE /users/:id` remove um usuario e retorna HTTP `204`. Quando o
 ID nao existe, retorna HTTP `404`.
 
+## Frontend minimo
+
+O backend serve paginas HTML vanilla em `/`, `/login.html` e `/users.html`.
+A pagina de usuarios usa `fetch` para listar e criar usuarios, e a pagina de
+login oferece um fluxo simulado para os testes E2E. Os controles interativos
+possuem atributos `data-testid` estaveis.
+
 As respostas de erro seguem o formato JSON `{ "error": "...", "message": "..." }`.
 Por exemplo, uma rota inexistente retorna `{ "error": "not_found", "message":
 "Route not found" }`.

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login | AI Quality Engineering</title>
+  </head>
+  <body>
+    <main>
+      <h1>Login</h1>
+      <form data-testid="login-form">
+        <label for="email">E-mail</label>
+        <input data-testid="login-email" id="email" name="email" required type="email" />
+        <label for="password">Senha</label>
+        <input
+          data-testid="login-password"
+          id="password"
+          name="password"
+          required
+          type="password"
+        />
+        <button data-testid="login-submit" type="submit">Entrar</button>
+      </form>
+      <p data-testid="login-message" role="status"></p>
+      <a data-testid="login-users-link" href="/users.html">Usuários</a>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

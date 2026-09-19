@@ -3,6 +3,7 @@ import { URL } from "node:url";
 import { loadEnv } from "./config/env.js";
 import { HealthController } from "./controllers/health.controller.js";
 import { createPool, waitForDatabase } from "./db/client.js";
+import { serveStatic } from "./api/static.js";
 import { UserController } from "./controllers/user.controller.js";
 import { HealthRepository } from "./repositories/health.repository.js";
 import { InMemoryUserRepository } from "./repositories/in-memory-user.repository.js";
@@ -36,6 +37,11 @@ const readRequestBody = async (request: IncomingMessage): Promise<string> => {
 
 const server = createServer(async (request, response) => {
   const requestUrl = new URL(request.url ?? "/", "http://localhost");
+
+  if (await serveStatic(request, response)) {
+    return;
+  }
+
   const userIdMatch = requestUrl.pathname.match(/^\/users\/([^/]+)$/);
   const userId = userIdMatch?.[1];
 
