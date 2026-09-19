@@ -105,4 +105,19 @@ describe("HTTP API", () => {
     });
     expect(invalidPut.status).toBe(400);
   });
+
+  it("authenticates the mock login endpoint", async () => {
+    const login = await userApi.request<{ token: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "test@example.com", password: "password" }),
+    });
+    expect(login.status).toBe(200);
+    expect(login.body).toEqual({ token: "fake-token" });
+
+    const invalidLogin = await userApi.request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "test@example.com", password: "wrong" }),
+    });
+    expect(invalidLogin.status).toBe(401);
+  });
 });

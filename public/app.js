@@ -9,9 +9,21 @@ const jsonRequest = async (path, options = {}) => {
 
 const loginForm = document.querySelector('[data-testid="login-form"]');
 if (loginForm) {
-  loginForm.addEventListener("submit", (event) => {
+  loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    document.querySelector('[data-testid="login-message"]').textContent = "Login simulado com sucesso.";
+    const form = new FormData(loginForm);
+    const { response, body } = await jsonRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+    });
+
+    if (!response.ok) {
+      document.querySelector('[data-testid="login-message"]').textContent = body.message;
+      return;
+    }
+
+    localStorage.setItem("auth_token", body.token);
+    window.location.assign("/users");
   });
 }
 

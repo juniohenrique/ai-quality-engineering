@@ -18,7 +18,16 @@ export async function serveStatic(
   }
 
   const requestedPath = new URL(request.url ?? "/", "http://localhost").pathname;
-  const fileName = requestedPath === "/" ? "/index.html" : requestedPath;
+  if (requestedPath === "/users" && !request.headers.accept?.includes("text/html")) {
+    return false;
+  }
+
+  const routeFiles: Record<string, string> = {
+    "/": "/index.html",
+    "/login": "/login.html",
+    "/users": "/users.html",
+  };
+  const fileName = routeFiles[requestedPath] ?? requestedPath;
   const filePath = resolve(publicDirectory, `.${fileName}`);
 
   if (!normalize(filePath).startsWith(normalize(publicDirectory))) {

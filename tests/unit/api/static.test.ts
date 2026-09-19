@@ -46,4 +46,17 @@ describe("serveStatic", () => {
       serveStatic({ method: "POST", url: "/" } as never, post.response as never),
     ).resolves.toBe(false);
   });
+
+  it.each(["/login", "/users"])("serves the %s route", async (url) => {
+    const output = createResponse();
+
+    await expect(
+      serveStatic({ method: "GET", url, headers: { accept: "text/html" } } as never, output.response as never),
+    ).resolves.toBe(true);
+
+    expect(output.getResult()).toMatchObject({
+      statusCode: 200,
+      contentType: "text/html; charset=utf-8",
+    });
+  });
 });
