@@ -86,6 +86,14 @@ Quando o ID nao existe, retorna HTTP `404`.
 O endpoint `DELETE /users/:id` remove um usuario e retorna HTTP `204`. Quando o
 ID nao existe, retorna HTTP `404`.
 
+## Frontend minimo
+
+O backend serve paginas HTML vanilla em `/`, `/login`, `/users` e `/user-form`.
+A pagina de usuarios usa `fetch` para listar, editar e excluir usuarios, e a
+pagina de formulario permite criar ou editar registros. A pagina de login
+oferece um fluxo simulado para os testes E2E. Os controles interativos
+possuem atributos `data-testid` estaveis.
+
 As respostas de erro seguem o formato JSON `{ "error": "...", "message": "..." }`.
 Por exemplo, uma rota inexistente retorna `{ "error": "not_found", "message":
 "Route not found" }`.
@@ -124,6 +132,9 @@ O projeto separa responsabilidades por camada:
 Uma descricao detalhada dos componentes e fluxos esta em
 [`docs/architecture.md`](docs/architecture.md).
 
+A estrategia de testes, suas camadas, dados, isolamento e fluxos E2E esta em
+[`docs/test-architecture.md`](docs/test-architecture.md).
+
 ### Health check
 
 O fluxo de `/health` e:
@@ -154,6 +165,9 @@ Execute os comandos individualmente ou em conjunto:
 
 ```bash
 npm test
+npm run test:unit
+npm run test:integration
+npm run test:e2e
 npm run test:coverage
 npm run build
 npm run lint
@@ -175,6 +189,21 @@ job de coverage faz o pipeline falhar.
 Os testes de integração HTTP ficam em `src/server.integration.test.ts` e
 iniciam o servidor com um repositório de usuários em memória. A suíte valida
 health check, rotas inexistentes e o ciclo completo de usuários.
+
+### Testes E2E
+
+Os testes E2E usam Playwright e validam fluxos completos no browser. O comando
+`npm run test:e2e` inicia o servidor automaticamente, executa os testes e gera
+relatório HTML em `playwright-report/`. A configuração está em
+`playwright.config.ts` e define:
+
+- Base URL: `http://localhost:3000`
+- Timeout: 30 segundos por teste
+- Retries: 1 em CI, 0 local
+- Reporter: HTML + list
+
+O Playwright requer browsers instalados. Execute `npx playwright install` após
+adicionar `@playwright/test`.
 
 Os testes sao executados pelo Vitest e ficam ao lado das implementacoes. A
 cobertura atual inclui:
