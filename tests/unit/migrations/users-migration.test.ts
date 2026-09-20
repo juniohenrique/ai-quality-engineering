@@ -11,7 +11,7 @@ describe("users migration", () => {
     expect(sql).toMatch(/CREATE TABLE users/i);
     expect(sql).toMatch(/id UUID PRIMARY KEY/i);
     expect(sql).toMatch(/email VARCHAR\(255\) NOT NULL UNIQUE/i);
-    expect(sql).toMatch(/name VARCHAR\(255\) NOT NULL/i);
+    expect(sql).toMatch(/user_name VARCHAR\(255\) NOT NULL/i);
     expect(sql).toMatch(/created_at TIMESTAMPTZ NOT NULL DEFAULT NOW\(\)/i);
     expect(sql).toMatch(/updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW\(\)/i);
   });

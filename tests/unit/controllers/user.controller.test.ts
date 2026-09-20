@@ -26,11 +26,11 @@ describe("GET /users", () => {
     const service = new UserService(new InMemoryUserRepository());
     const firstUser = await service.createUser({
       email: "ada@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     const secondUser = await service.createUser({
       email: "grace@example.com",
-      name: "Grace Hopper",
+      userName: "Grace Hopper",
     });
     const controller = new UserController(service);
     let statusCode: number | undefined;
@@ -57,7 +57,7 @@ describe("POST /users", () => {
     const output = createResponse();
 
     await controller.handleCreate(
-      { email: " ADA@EXAMPLE.COM ", name: " Ada Lovelace " },
+      { email: " ADA@EXAMPLE.COM ", userName: " Ada Lovelace " },
       output.response as never,
     );
 
@@ -65,7 +65,7 @@ describe("POST /users", () => {
     expect(JSON.parse(output.getBody())).toMatchObject({
       id: expect.any(String),
       email: "ada@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
   });
 
@@ -74,7 +74,7 @@ describe("POST /users", () => {
     const output = createResponse();
 
     await controller.handleCreate(
-      { email: "invalid-email", name: "Ada Lovelace" },
+      { email: "invalid-email", userName: "Ada Lovelace" },
       output.response as never,
     );
 
@@ -85,7 +85,7 @@ describe("POST /users", () => {
     });
   });
 
-  it.each([null, {}, { email: "ada@example.com" }, { name: "Ada Lovelace" }])(
+  it.each([null, {}, { email: "ada@example.com" }, { userName: "Ada Lovelace" }])(
     "returns 400 for a structurally invalid payload: %s",
     async (input) => {
       const createUser = vi.fn();
@@ -120,7 +120,7 @@ describe("POST /users", () => {
     const output = createResponse();
 
     await controller.handleCreate(
-      { email: "ada@example.com", name: "Ada Lovelace" },
+      { email: "ada@example.com", userName: "Ada Lovelace" },
       output.response as never,
     );
 
@@ -142,7 +142,7 @@ describe("POST /users", () => {
     const output = createResponse();
 
     await controller.handleCreate(
-      { email: "ada@example.com", name: "Ada Lovelace" },
+      { email: "ada@example.com", userName: "Ada Lovelace" },
       output.response as never,
     );
 
@@ -158,7 +158,7 @@ describe("GET /users/:id", () => {
     const service = new UserService(new InMemoryUserRepository());
     const user = await service.createUser({
       email: "ada@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     const controller = new UserController(service);
     let statusCode: number | undefined;
@@ -206,7 +206,7 @@ describe("PUT /users/:id", () => {
     const service = new UserService(new InMemoryUserRepository());
     const user = await service.createUser({
       email: "ada@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     const controller = new UserController(service);
     let statusCode: number | undefined;
@@ -222,7 +222,7 @@ describe("PUT /users/:id", () => {
 
     await controller.handleUpdate(
       user.id,
-      { email: "ada.updated@example.com", name: "Ada Byron Lovelace" },
+      { email: "ada.updated@example.com", userName: "Ada Byron Lovelace" },
       response as never,
     );
 
@@ -230,7 +230,7 @@ describe("PUT /users/:id", () => {
     expect(JSON.parse(body)).toEqual({
       id: user.id,
       email: "ada.updated@example.com",
-      name: "Ada Byron Lovelace",
+      userName: "Ada Byron Lovelace",
     });
   });
 
@@ -249,7 +249,7 @@ describe("PUT /users/:id", () => {
 
     await controller.handleUpdate(
       "missing-user",
-      { email: "missing@example.com", name: "Missing User" },
+      { email: "missing@example.com", userName: "Missing User" },
       response as never,
     );
 
@@ -266,7 +266,7 @@ describe("DELETE /users/:id", () => {
     const service = new UserService(new InMemoryUserRepository());
     const user = await service.createUser({
       email: "ada@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     const controller = new UserController(service);
     const output = createResponse();
@@ -290,7 +290,7 @@ describe("DELETE /users/:id", () => {
     });
   });
 
-  it.each([null, {}, { email: "ada@example.com" }, { name: "Ada Lovelace" }])(
+  it.each([null, {}, { email: "ada@example.com" }, { userName: "Ada Lovelace" }])(
     "returns 400 for a structurally invalid payload: %s",
     async (input) => {
       const updateUser = vi.fn();
@@ -326,7 +326,7 @@ describe("DELETE /users/:id", () => {
 
     await controller.handleUpdate(
       "user-1",
-      { email: "ada@example.com", name: "Ada Lovelace" },
+      { email: "ada@example.com", userName: "Ada Lovelace" },
       output.response as never,
     );
 
@@ -349,7 +349,7 @@ describe("DELETE /users/:id", () => {
 
     await controller.handleUpdate(
       "user-1",
-      { email: "ada@example.com", name: "Ada Lovelace" },
+      { email: "ada@example.com", userName: "Ada Lovelace" },
       output.response as never,
     );
 

@@ -24,7 +24,7 @@ test.describe('User Edit Flow', () => {
     // Arrange: Cria um usuário primeiro para poder editá-lo
     const timestamp = Date.now();
     const originalUser = {
-      name: 'Carlos Original',
+      userName: 'Carlos Original',
       email: `carlos.original.${timestamp}@example.com`,
     };
 
@@ -45,7 +45,7 @@ test.describe('User Edit Flow', () => {
 
     // Act: Modifica os dados
     const updatedUser = {
-      name: 'Carlos Editado',
+      userName: 'Carlos Editado',
       email: `carlos.editado.${timestamp}@example.com`,
     };
 
@@ -71,7 +71,7 @@ test.describe('User Edit Flow', () => {
     // Arrange: Cria um usuário primeiro
     const timestamp = Date.now();
     const user = {
-      name: 'Ana Silva',
+      userName: 'Ana Silva',
       email: `ana.silva.${timestamp}@example.com`,
     };
 
@@ -99,11 +99,11 @@ test.describe('User Edit Flow', () => {
     // Arrange: Cria dois usuários
     const timestamp = Date.now();
     const user1 = {
-      name: 'Ricardo Santos',
+      userName: 'Ricardo Santos',
       email: `ricardo.santos.${timestamp}@example.com`,
     };
     const user2 = {
-      name: 'Paula Costa',
+      userName: 'Paula Costa',
       email: `paula.costa.${timestamp}@example.com`,
     };
 
@@ -143,7 +143,7 @@ test.describe('User Edit Flow', () => {
     // Arrange: Cria um usuário
     const timestamp = Date.now();
     const user = {
-      name: 'Bruno Lima',
+      userName: 'Bruno Lima',
       email: `bruno.lima.${timestamp}@example.com`,
     };
 

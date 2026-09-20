@@ -21,7 +21,7 @@ export class UserNotFoundError extends Error {
 interface UserRow {
   id: string;
   email: string;
-  name: string;
+  user_name: string;
 }
 
 export class PostgresUserRepository implements UserRepository {
@@ -29,14 +29,14 @@ export class PostgresUserRepository implements UserRepository {
 
   async findAll(): Promise<User[]> {
     const result = await this.pool.query<UserRow>(
-      "SELECT id, email, name FROM users ORDER BY created_at, id",
+      "SELECT id, email, user_name AS \"userName\" FROM users ORDER BY created_at, id",
     );
     return result.rows.map(toUser);
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
     const result = await this.pool.query<UserRow>(
-      "SELECT id, email, name FROM users WHERE email = $1",
+      "SELECT id, email, user_name AS userName FROM users WHERE email = $1",
       [email],
     );
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -44,7 +44,7 @@ export class PostgresUserRepository implements UserRepository {
 
   async findById(id: string): Promise<User | undefined> {
     const result = await this.pool.query<UserRow>(
-      "SELECT id, email, name FROM users WHERE id = $1",
+      "SELECT id, email, user_name AS userName FROM users WHERE id = $1",
       [id],
     );
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -52,7 +52,7 @@ export class PostgresUserRepository implements UserRepository {
 
     async save(user: User): Promise<void> {
     try {
-      await this.pool.query("INSERT INTO users (id, email, name) VALUES ($1, $2, $3)", [
+            await this.pool.query("INSERT INTO users (id, email, user_name) VALUES ($1, $2, $3)", [
         user.id,
         user.email,
         user.userName,
@@ -65,7 +65,7 @@ export class PostgresUserRepository implements UserRepository {
   async update(user: User): Promise<void> {
     try {
       const result = await this.pool.query(
-        "UPDATE users SET email = $2, name = $3, updated_at = NOW() WHERE id = $1",
+        "UPDATE users SET email = $2, user_name = $3, updated_at = NOW() WHERE id = $1",
         [user.id, user.email, user.userName],
       );
 
@@ -84,7 +84,7 @@ export class PostgresUserRepository implements UserRepository {
 }
 
 function toUser(row: UserRow): User {
-  return new User({ id: row.id, email: row.email, userName: row.name });
+    return new User({ id: row.id, email: row.email, userName: row.userName });
 }
 
 function mapDatabaseError(error: unknown): Error {

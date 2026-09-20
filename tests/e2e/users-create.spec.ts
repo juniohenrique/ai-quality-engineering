@@ -24,7 +24,7 @@ test.describe('User Creation Flow', () => {
     // Arrange: Dados do novo usuário com timestamp para garantir unicidade
     const timestamp = Date.now();
     const newUser = {
-      name: 'João Silva',
+      userName: 'João Silva',
       email: `joao.silva.${timestamp}@example.com`,
     };
 
@@ -51,7 +51,7 @@ test.describe('User Creation Flow', () => {
   test('deve exibir erro ao tentar criar usuário com email inválido', async ({ page }) => {
     // Arrange: Dados com email inválido (sem @)
     const invalidUser = {
-      name: 'Maria Santos',
+      userName: 'Maria Santos',
       email: 'email-invalido',
     };
 
@@ -73,7 +73,7 @@ test.describe('User Creation Flow', () => {
     // Arrange: Cria um usuário primeiro com timestamp para garantir unicidade entre execuções
     const timestamp = Date.now();
     const existingUser = {
-      name: 'Pedro Oliveira',
+      userName: 'Pedro Oliveira',
       email: `pedro.oliveira.${timestamp}@example.com`,
     };
 

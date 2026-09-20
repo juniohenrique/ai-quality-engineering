@@ -68,10 +68,10 @@ describe("HTTP API", () => {
   });
 
   it("creates, finds, updates, and deletes a user", async () => {
-    const created = await userApi.create({ email: "ada@example.com", name: "Ada Lovelace" });
+    const created = await userApi.create({ email: "ada@example.com", userName: "Ada Lovelace" });
     expect(created.status).toBe(201);
     const user = created.body;
-    expect(user).toMatchObject({ email: "ada@example.com", name: "Ada Lovelace" });
+    expect(user).toMatchObject({ email: "ada@example.com", userName: "Ada Lovelace" });
 
     const found = await userApi.getById(user.id);
     expect(found.status).toBe(200);
@@ -79,13 +79,13 @@ describe("HTTP API", () => {
 
     const updated = await userApi.update(user.id, {
       email: "ada.updated@example.com",
-      name: "Ada Byron Lovelace",
+      userName: "Ada Byron Lovelace",
     });
     expect(updated.status).toBe(200);
     expect(updated.body).toMatchObject({
       id: user.id,
       email: "ada.updated@example.com",
-      name: "Ada Byron Lovelace",
+      userName: "Ada Byron Lovelace",
     });
 
     const deleted = await userApi.delete(user.id);
