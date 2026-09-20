@@ -66,6 +66,13 @@ describe("Provider Verification", () => {
     const baseUrl = `http://127.0.0.1:${port}`;
 
     const pactFile = process.env.PACT_PACT_FILE;
+    const brokerConfigured = process.env.PACT_BROKER_BASE_URL || pactBroker.token;
+
+    // Skip when no local pact file and no broker configured
+    if (!pactFile && !brokerConfigured) {
+      console.warn("Skipping provider verification: no PACT_PACT_FILE or PACT_BROKER_BASE_URL set");
+      return;
+    }
 
     const verifier = new Verifier({
       provider: pactOptions.provider,
