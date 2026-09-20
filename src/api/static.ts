@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { extname, join, resolve, dirname } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { URL } from "node:url";
 import { fileURLToPath } from "node:url";
 
 // dist/api/static.js -> dist/api -> dist -> root -> public
@@ -34,7 +35,7 @@ export async function serveStatic(
   }
 
   const requestedPath = new URL(request.url ?? "/", "http://localhost").pathname;
-  
+
   // Não servir /users como HTML se o Accept não incluir text/html (para API)
   if (requestedPath === "/users" && !request.headers.accept?.includes("text/html")) {
     return false;
@@ -47,7 +48,7 @@ export async function serveStatic(
     "/users": "/users.html",
     "/user-form": "/user-form.html",
   };
-  
+
   // Se é uma rota mapeada, usar o arquivo correspondente
   // Caso contrário, usar o path solicitado (ex: /css/user-form.css)
   const fileName = routeFiles[requestedPath] ?? requestedPath;
