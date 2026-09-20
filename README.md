@@ -167,6 +167,7 @@ Execute os comandos individualmente ou em conjunto:
 npm test
 npm run test:unit
 npm run test:integration
+npm run test:contract
 npm run test:e2e
 npm run test:coverage
 npm run build
@@ -189,6 +190,19 @@ job de coverage faz o pipeline falhar.
 Os testes de integração HTTP ficam em `src/server.integration.test.ts` e
 iniciam o servidor com um repositório de usuários em memória. A suíte valida
 health check, rotas inexistentes e o ciclo completo de usuários.
+
+### Contract testing
+
+Os consumer contracts usam `@pact-foundation/pact` e ficam em
+`tests/contract/`. O contrato de usuário cobre `GET /users/:id`, incluindo
+método, path, headers, status e body esperados pelo consumidor. O teste também
+gera o arquivo JSON em `pacts/`.
+
+Execute os contratos com:
+
+```bash
+npm run test:contract
+```
 
 ### Testes E2E
 

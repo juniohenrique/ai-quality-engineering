@@ -41,6 +41,7 @@ allure-report/
 stryker-tmp/
 reports/mutation/
 .report/
+pacts/
 
 # ------------------------------------------------------------
 # Cache de ferramentas
