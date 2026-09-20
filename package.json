@@ -22,7 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run tests/unit --passWithNoTests",
     "test:integration": "DATABASE_URL_TEST=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} DATABASE_URL=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} RUN_DB_INTEGRATION=true npm run migrate:up && DATABASE_URL_TEST=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} DATABASE_URL=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} RUN_DB_INTEGRATION=true vitest run tests/integration --passWithNoTests --no-file-parallelism",
-    "test:contract": "vitest run tests/contract --passWithNoTests",
+    "test:contract": "vitest run tests/contract/user.consumer.pact.spec.ts",
     "test:e2e": "playwright test",
     "test:watch": "vitest"
   },
