@@ -167,6 +167,7 @@ Execute os comandos individualmente ou em conjunto:
 npm test
 npm run test:unit
 npm run test:integration
+npm run test:contract
 npm run test:e2e
 npm run test:coverage
 npm run build
@@ -189,6 +190,26 @@ job de coverage faz o pipeline falhar.
 Os testes de integração HTTP ficam em `src/server.integration.test.ts` e
 iniciam o servidor com um repositório de usuários em memória. A suíte valida
 health check, rotas inexistentes e o ciclo completo de usuários.
+
+### Contract testing
+
+O projeto usa `@pact-foundation/pact` para contract testing consumer-driven.
+A estrutura inicial fica em `tests/contract/`, com as opções compartilhadas em
+`tests/contract/pact.config.ts`. Os contratos são gravados em `pacts/`, que é
+ignorado por padrão como artefato local. Os primeiros contratos de usuário
+serão adicionados na issue S03-02.
+
+Execute a suíte com:
+
+```bash
+npm run test:contract
+```
+
+Para publicar contratos em um Pact Broker local, defina
+`PACT_BROKER_BASE_URL` (padrão: `http://localhost:9292`) e
+`PACT_BROKER_TOKEN` quando necessário. PactFlow pode ser usado com as mesmas
+variáveis. A configuração não inicia o broker automaticamente; ele deve estar
+disponível antes da publicação.
 
 ### Testes E2E
 
