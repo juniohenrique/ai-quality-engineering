@@ -75,7 +75,7 @@ describe("Provider Verification", () => {
         ? { pactUrls: [pactFile] }
         : {
             pactBrokerUrl: pactBroker.baseUrl,
-            pactBrokerToken: pactBroker.token,
+            ...(pactBroker.token ? { pactBrokerToken: pactBroker.token } : {}),
             consumerVersionTags: ["main"],
             publishVerificationResult: true,
           }),
