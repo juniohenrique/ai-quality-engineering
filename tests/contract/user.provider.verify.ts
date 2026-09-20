@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, describe, it, expect } from "vitest";
+import { beforeAll, afterAll, describe, it } from "vitest";
 import { UserApiClient } from "../helpers/user-api-client.ts";
 import { Verifier } from "@pact-foundation/pact";
 import { pactOptions, pactBroker } from "./pact.config.ts";
@@ -9,13 +9,14 @@ describe("Provider Verification", () => {
   let serverStarted = false;
 
   beforeAll(async () => {
-    const { port, databaseUrl } = loadEnv();
+    const { port } = loadEnv();
     const baseUrl = `http://127.0.0.1:${port}`;
     const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
 
     process.env.PORT = String(port);
     process.env.DATABASE_URL = runDatabaseIntegration
-      ? (process.env.DATABASE_URL_TEST ?? "postgres://postgres:postgres@localhost:5433/quality_test")
+      ? (process.env.DATABASE_URL_TEST ??
+        "postgres://postgres:postgres@localhost:5433/quality_test")
       : "postgresql://127.0.0.1:1/unavailable";
 
     if (runDatabaseIntegration) {
@@ -35,7 +36,9 @@ describe("Provider Verification", () => {
         await client.getAll();
         serverStarted = true;
         return;
-      } catch {}
+      } catch {
+        /* server not ready yet, will retry */
+      }
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
 
