@@ -84,7 +84,10 @@ export class PostgresUserRepository implements UserRepository {
 }
 
 function toUser(row: UserRow): User {
-    return new User({ id: row.id, email: row.email, userName: row.userName });
+    // The SQL queries alias `user_name` as `userName` for convenience, but the
+    // TypeScript type `UserRow` still reflects the original column name.
+    // We map the database column to the domain property here.
+    return new User({ id: row.id, email: row.email, userName: row.user_name });
 }
 
 function mapDatabaseError(error: unknown): Error {
