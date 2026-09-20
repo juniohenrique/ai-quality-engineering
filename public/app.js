@@ -30,6 +30,59 @@ if (loginForm) {
 const userList = document.querySelector('[data-testid="user-list"]');
 const userMessage = document.querySelector('[data-testid="user-message"]');
 
+const showUserMessage = (message, type) => {
+  if (!userMessage) return;
+
+  userMessage.textContent = message;
+  userMessage.classList.remove("success", "error");
+  userMessage.classList.add("visible", type);
+};
+
+const deleteUser = async (event) => {
+  const deleteButton = event.target.closest(".action-link.danger");
+  if (!deleteButton || !userList.contains(deleteButton)) return;
+
+  event.preventDefault();
+
+  const userId = deleteButton.dataset.userId;
+  const userName = deleteButton.dataset.userName;
+  if (
+    !userId ||
+    !userName ||
+    !window.confirm(`Tem certeza que deseja excluir o usuário ${userName}?`)
+  ) {
+    return;
+  }
+
+  const originalText = deleteButton.textContent;
+  deleteButton.disabled = true;
+  deleteButton.textContent = "Excluindo...";
+
+  try {
+    const { response, body } = await jsonRequest(`/users/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      showUserMessage(body?.message || "Não foi possível excluir o usuário.", "error");
+      return;
+    }
+
+    deleteButton.closest("tr").remove();
+    showUserMessage("Usuário excluído.", "success");
+
+    if (!userList.querySelector("tr")) {
+      userList.innerHTML =
+        '<tr><td class="empty-state" colspan="3">Nenhum usuário cadastrado</td></tr>';
+    }
+  } catch {
+    showUserMessage("Erro de conexão. Tente novamente.", "error");
+  } finally {
+    deleteButton.disabled = false;
+    deleteButton.textContent = originalText;
+  }
+};
+
 const loadUsers = async () => {
   const { response, body } = await jsonRequest("/users");
   if (!response.ok) {
@@ -46,22 +99,16 @@ const loadUsers = async () => {
       const actions = document.createElement("td");
       const edit = document.createElement("a");
       edit.dataset.testid = `user-edit-${user.id}`;
+      edit.className = "action-link";
       edit.href = `/user-form?id=${encodeURIComponent(user.id)}`;
       edit.textContent = "Editar";
       const remove = document.createElement("button");
       remove.dataset.testid = `user-delete-${user.id}`;
+      remove.dataset.userId = user.id;
+      remove.dataset.userName = user.name;
+      remove.className = "action-link danger";
       remove.type = "button";
       remove.textContent = "Excluir";
-      remove.addEventListener("click", async () => {
-        if (!window.confirm("Excluir este usuário?")) return;
-        const { response } = await jsonRequest(`/users/${encodeURIComponent(user.id)}`, {
-          method: "DELETE",
-        });
-        userMessage.textContent = response.ok
-          ? "Usuário excluído."
-          : "Não foi possível excluir o usuário.";
-        if (response.ok) await loadUsers();
-      });
       actions.append(edit, remove);
       row.append(actions);
       return row;
@@ -69,7 +116,10 @@ const loadUsers = async () => {
   );
 };
 
-if (userList) loadUsers();
+if (userList) {
+  userList.addEventListener("click", deleteUser);
+  loadUsers();
+}
 
 const userForm = document.querySelector('[data-testid="user-form"]');
 const initializeUserForm = async () => {
