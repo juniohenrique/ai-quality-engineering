@@ -50,12 +50,12 @@ export class PostgresUserRepository implements UserRepository {
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
   }
 
-  async save(user: User): Promise<void> {
+    async save(user: User): Promise<void> {
     try {
       await this.pool.query("INSERT INTO users (id, email, name) VALUES ($1, $2, $3)", [
         user.id,
         user.email,
-        user.name,
+        user.userName,
       ]);
     } catch (error) {
       throw mapDatabaseError(error);
@@ -66,7 +66,7 @@ export class PostgresUserRepository implements UserRepository {
     try {
       const result = await this.pool.query(
         "UPDATE users SET email = $2, name = $3, updated_at = NOW() WHERE id = $1",
-        [user.id, user.email, user.name],
+        [user.id, user.email, user.userName],
       );
 
       if (result.rowCount === 0) {
@@ -84,7 +84,7 @@ export class PostgresUserRepository implements UserRepository {
 }
 
 function toUser(row: UserRow): User {
-  return new User({ id: row.id, email: row.email, name: row.name });
+  return new User({ id: row.id, email: row.email, userName: row.name });
 }
 
 function mapDatabaseError(error: unknown): Error {

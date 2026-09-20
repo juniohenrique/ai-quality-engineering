@@ -1,12 +1,12 @@
 export interface ApiUser {
   id: string;
   email: string;
-  name: string;
+  userName: string;
 }
 
 export interface UserInput {
   email: string;
-  name: string;
+  userName: string;
 }
 
 export interface ApiResponse<T> {
