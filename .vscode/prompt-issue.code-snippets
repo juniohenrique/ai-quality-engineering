@@ -1,106 +1,236 @@
 {
-  "Prompt: Issue completa (commit + PR body)": {
+  "Prompt: Criar branch para issue": {
+    "prefix": "prompt-branch",
+    "body": [
+      "Issue #${1:N} (${2:SXX-YY}), tipo ${3|feature,bugfix,chore,docs,release,hotfix|}, scope ${4|users,payments,queue,api,tests,security,perf,observability,ci,config,docs,ai|}.",
+      "",
+      "Me de os comandos para:",
+      "1. Atualizar a develop local: git checkout develop && git pull",
+      "2. Criar a branch: git checkout -b ${3:feature}/${4:users}/${2:S02-13}-${5:descricao-curta}",
+      "3. Confirmar: git branch --show-current",
+      "",
+      "Regras de nomenclatura:",
+      "- Usar prefixo COMPLETO (feature, bugfix, chore, docs, release, hotfix), NAO abreviar",
+      "- Separar por / (barra)",
+      "- Descricao curta em kebab-case"
+    ],
+    "description": "Cria o nome da branch correto para uma issue."
+  },
+
+  "Prompt: Issue completa (commit + PR)": {
     "prefix": "prompt-issue",
     "body": [
-      "Issue #${1:N} (${2:SXX-YY}), tipo ${3:feature}.",
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "#file:.github/SCOPES.md",
+      "",
+      "Issue #${1:N} (${2:SXX-YY}), tipo ${3|feat,fix,test,docs,chore,refactor,perf,security,ci,build|}.",
       "Escolha o scope consultando .github/SCOPES.md.",
-      "Estou dentro da branch. Não crie branch, não faça push, não abra PR.",
+      "Estou dentro da branch. NAO crie branch, NAO faca push, NAO abra PR.",
       "",
       "Gere:",
       "1. Commit em Conventional Commits com [${2:SXX-YY}] + Refs: #${1:N}, corpo 3-5 bullets.",
       "2. .tmp/pr_body.md seguindo .github/pull_request_template.md.",
       "",
-      "Ao terminar, mostre o commit e o pr_body.md para eu revisar.",
+      "Ao terminar, mostre o commit e o pr_body.md para eu revisar antes de qualquer acao."
     ],
-    "description": "Gera prompt para o Copilot criar commit + PR body de uma issue.",
+    "description": "Gera commit + PR body de uma issue (sem executar)."
   },
 
   "Prompt: Apenas commit": {
     "prefix": "prompt-commit",
     "body": [
-      "Issue #${1:N} (${2:SXX-YY}), tipo ${3:feature}.",
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "#file:.github/SCOPES.md",
+      "",
+      "Issue #${1:N} (${2:SXX-YY}), tipo ${3|feat,fix,test,docs,chore,refactor,perf,security,ci,build|}.",
       "Escolha o scope consultando .github/SCOPES.md.",
-      "Estou dentro da branch. Não crie branch, não faça push, não abra PR.",
+      "Estou dentro da branch. NAO crie branch, NAO faca push, NAO abra PR.",
       "",
       "Gere apenas o commit em Conventional Commits:",
-      "- Primeira linha: <tipo>(<scope>): <descrição curta imperativa> [${2:SXX-YY}]",
-      "- Corpo com 3-5 bullets do que foi feito (não cole a issue inteira)",
+      "- Primeira linha: <tipo>(<scope>): <descricao imperativa> [${2:SXX-YY}] (max 72 chars)",
+      "- Corpo com 3-5 bullets do que foi feito",
       "- Finalize com: Refs: #${1:N}",
       "",
-      "Mostre o commit para eu revisar antes de rodar git commit.",
+      "Mostre o commit para eu revisar antes de rodar git commit."
     ],
-    "description": "Gera prompt para o Copilot criar apenas o commit.",
+    "description": "Gera apenas o commit de uma issue."
   },
 
   "Prompt: Apenas PR body": {
     "prefix": "prompt-pr",
     "body": [
-      "Issue #${1:N} (${2:SXX-YY}), tipo ${3:feature}.",
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "#file:.github/pull_request_template.md",
+      "",
+      "Issue #${1:N} (${2:SXX-YY}), tipo ${3|feat,fix,test,docs,chore,refactor,perf,security,ci,build|}.",
       "Escolha o scope consultando .github/SCOPES.md.",
       "",
-      "Gere .tmp/pr_body.md seguindo .github/pull_request_template.md.",
-      "Preencha:",
-      "- Issue: Refs: #${1:N} (ou Closes #${1:N} se fechar ao merge)",
-      "- Sprint: ${4:Sprint XX — Semanas Y–Z}",
+      "Gere .tmp/pr_body.md seguindo o template. Preencha:",
+      "- Issue: Closes #${1:N}",
+      "- Sprint: ${4:Sprint XX - Semanas Y-Z}",
       "- Objetivo: 2-3 linhas",
-      "- O que foi feito: checkboxes [x] com itens reais do diff atual",
-      "- Evidência: paths dos arquivos criados/alterados",
+      "- O que foi feito: checkboxes [x] com itens reais do diff",
+      "- Evidencias: paths dos arquivos criados/alterados",
       "- Checklist: marcar tudo que foi feito",
-      "- Dependências: listar bloqueios",
+      "- Dependencias: listar bloqueios",
       "",
-      "Ao terminar, mostre o conteúdo do arquivo para eu revisar.",
+      "Ao terminar, mostre o conteudo do arquivo para eu revisar."
     ],
-    "description": "Gera prompt para o Copilot criar apenas o PR body.",
+    "description": "Gera apenas o PR body de uma issue."
   },
 
-  "Prompt: Revisar mudanças antes do commit": {
+  "Prompt: Refatoracao de UI (form/CSS)": {
+    "prefix": "prompt-ui",
+    "body": [
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "#file:.github/SCOPES.md",
+      "#file:.cline/skills/user-form/SKILL.md",
+      "#file:.cline/skills/css-styling/SKILL.md",
+      "",
+      "Tarefa de UI em ${1:public/user-form.html}.",
+      "",
+      "Arquivos que serao alterados:",
+      "#file:${1:public/user-form.html}",
+      "#file:${2:public/app.js}",
+      "#file:${3:public/css/base.css}",
+      "",
+      "Objetivo: ${4:descreva a refatoracao}",
+      "",
+      "Restricoes:",
+      "- Stack vanilla (HTML5 + CSS moderno + JS puro). NAO use frameworks.",
+      "- Use design tokens do :root. Nao hardcode cores/espacamentos.",
+      "- Acessibilidade obrigatoria (aria-describedby, role=alert, aria-busy).",
+      "- Preserve os endpoints, payloads e comportamentos existentes.",
+      "",
+      "Entrega:",
+      "- Codigo completo dos arquivos alterados",
+      "- Sugira mensagem de commit seguindo SCOPES.md",
+      "- NAO faca commit nem push sem confirmacao"
+    ],
+    "description": "Refatoracao de UI/form com CSS moderno e acessibilidade."
+  },
+
+  "Prompt: Implementar nova feature": {
+    "prefix": "prompt-feat",
+    "body": [
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "#file:.github/SCOPES.md",
+      "",
+      "Issue #${1:N} (${2:SXX-YY}), tipo feat.",
+      "Scope provavel: consultar .github/SCOPES.md.",
+      "",
+      "Descricao da feature: ${3:descreva a feature}",
+      "",
+      "Arquivos provavelmente envolvidos:",
+      "#file:${4:src/controllers/...}",
+      "#file:${5:src/services/...}",
+      "",
+      "Requisitos:",
+      "- Seguir arquitetura: controllers orquestram, services tem logica, repositories isolam dados.",
+      "- Adicionar testes (Vitest) para os cenarios principais.",
+      "- Nao alterar contratos existentes sem avisar.",
+      "",
+      "Antes de codar, me mostre o plano de implementacao em bullets.",
+      "Depois gere o codigo e os testes."
+    ],
+    "description": "Implementa uma nova feature seguindo a arquitetura do projeto."
+  },
+
+  "Prompt: Corrigir bug com TDD": {
+    "prefix": "prompt-bug",
+    "body": [
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "#file:.github/SCOPES.md",
+      "",
+      "Bug: ${1:descreva o bug em 1 linha}",
+      "",
+      "Reproducao:",
+      "1. ${2:passo 1}",
+      "2. ${3:passo 2}",
+      "",
+      "Comportamento esperado: ${4:o que deveria acontecer}",
+      "Comportamento atual: ${5:o que acontece}",
+      "",
+      "Arquivos provavelmente envolvidos:",
+      "#file:${6:src/...}",
+      "",
+      "Abordagem (TDD):",
+      "1. Escreva um teste que reproduz o bug (deve falhar).",
+      "2. Implemente a correcao minima para o teste passar.",
+      "3. Verifique se nenhum outro teste quebrou.",
+      "",
+      "Explique a causa raiz antes de codar. Nao faca commit nem push."
+    ],
+    "description": "Corrige bug seguindo TDD: teste que falha, correcao minima, passa."
+  },
+
+  "Prompt: Revisar mudancas antes do commit": {
     "prefix": "prompt-review",
     "body": [
-      "Revise as mudanças atuais da branch (git diff contra develop).",
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "#file:.github/SCOPES.md",
+      "",
+      "Revise as mudancas atuais da branch (git diff contra develop).",
       "",
       "Verifique:",
-      "1. Está tudo alinhado com a issue #${1:N} (${2:SXX-YY})?",
-      "2. Há código faltando, TODOs esquecidos ou console.log?",
+      "1. Esta alinhado com a issue #${1:N} (${2:SXX-YY})?",
+      "2. Ha codigo faltando, TODOs esquecidos ou console.log?",
       "3. Os testes cobrem os Acceptance Criteria?",
-      "4. O scope sugerido para o commit está em .github/SCOPES.md?",
+      "4. O scope sugerido para o commit esta em .github/SCOPES.md?",
+      "5. Algum design token foi hardcoded? Alguma cor/fonte fora do :root?",
       "",
-      "Se algo estiver faltando, me avise antes de eu commitar.",
+      "Se algo estiver faltando ou errado, me avise ANTES de eu commitar."
     ],
-    "description": "Pede ao Copilot para revisar o diff antes do commit.",
+    "description": "Revisa o diff contra develop antes do commit."
   },
 
   "Prompt: Corrigir CI quebrado": {
     "prefix": "prompt-fix-ci",
     "body": [
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "",
       "O CI quebrou na branch atual.",
       "",
       "Contexto:",
-      "- Job que falhou: ${1:lint|unit|integration|build|quality-gate|merge-policy}",
-      "- Log do erro: (colar abaixo)",
+      "- Job que falhou: ${1|lint,unit,integration,build,quality-gate,merge-policy|}",
+      "- Log do erro (colar abaixo entre as tags):",
       "",
-      "```",
+      "<log>",
       "${2:cole aqui o erro do GitHub Actions}",
-      "```",
+      "</log>",
       "",
-      "Analise, proponha correção mínima e explique a causa raiz.",
-      "Não faça commit nem push sem minha confirmação.",
+      "Analise, proponha a correcao MINIMA e explique a causa raiz em 2-3 linhas.",
+      "Se a correcao envolver escolha entre multiplas abordagens, liste as opcoes.",
+      "Nao faca commit nem push sem minha confirmacao."
     ],
-    "description": "Prompt para diagnosticar e corrigir falhas do CI.",
+    "description": "Diagnostica e corrige falhas do CI."
   },
 
-  "Prompt: Atualizar documentação após merge": {
+  "Prompt: Atualizar documentacao apos merge": {
     "prefix": "prompt-docs",
     "body": [
+      "@workspace Siga as convencoes em:",
+      "#file:.github/CONVENTIONS.md",
+      "",
       "Acabei de mergear a issue #${1:N} (${2:SXX-YY}) na develop.",
       "",
-      "Atualize a documentação impactada:",
-      "- README.md (se a mudança for visível ao usuário)",
+      "Atualize a documentacao impactada:",
+      "- README.md (se a mudanca for visivel ao usuario)",
       "- docs/architecture.md (se mudou estrutura)",
       "- docs/learning-log.md (registrar o que aprendi)",
-      "- docs/adr/ (criar ADR se for decisão arquitetural relevante)",
+      "- docs/adr/ (criar ADR se for decisao arquitetural relevante)",
       "",
-      "Mostre o diff antes de commitar.",
+      "Para cada arquivo atualizado, explique em 1 linha por que ele foi impactado.",
+      "Mostre o diff antes de commitar."
     ],
-    "description": "Atualiza documentação após merge de uma issue.",
-  },
+    "description": "Atualiza documentacao apos merge de uma issue."
+  }
 }
