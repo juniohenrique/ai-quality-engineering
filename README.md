@@ -193,23 +193,16 @@ health check, rotas inexistentes e o ciclo completo de usuários.
 
 ### Contract testing
 
-O projeto usa `@pact-foundation/pact` para contract testing consumer-driven.
-A estrutura inicial fica em `tests/contract/`, com as opções compartilhadas em
-`tests/contract/pact.config.ts`. Os contratos são gravados em `pacts/`, que é
-ignorado por padrão como artefato local. Os primeiros contratos de usuário
-serão adicionados na issue S03-02.
+Os consumer contracts usam `@pact-foundation/pact` e ficam em
+`tests/contract/`. O contrato de usuário cobre `GET /users/:id`, incluindo
+método, path, headers, status e body esperados pelo consumidor. O teste também
+gera o arquivo JSON em `pacts/`.
 
-Execute a suíte com:
+Execute os contratos com:
 
 ```bash
 npm run test:contract
 ```
-
-Para publicar contratos em um Pact Broker local, defina
-`PACT_BROKER_BASE_URL` (padrão: `http://localhost:9292`) e
-`PACT_BROKER_TOKEN` quando necessário. PactFlow pode ser usado com as mesmas
-variáveis. A configuração não inicia o broker automaticamente; ele deve estar
-disponível antes da publicação.
 
 ### Testes E2E
 
