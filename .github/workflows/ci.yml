@@ -72,6 +72,51 @@ jobs:
       - run: npm ci
       - run: npm run test:integration
 
+  contract:
+    name: contract
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run test:contract
+      - name: Upload pact files
+        uses: actions/upload-artifact@v4
+        with:
+          name: pact-files
+          path: pacts/
+          if-no-files-found: error
+
+  provider-verify:
+    name: provider-verify
+    runs-on: ubuntu-latest
+    needs: [lint, contract]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - name: Download pact files
+        uses: actions/download-artifact@v4
+        with:
+          name: pact-files
+          path: pacts/
+      - name: Run provider verification
+        env:
+          DATABASE_URL: postgresql://localhost:1/unavailable
+          PACT_PACT_FILE: pacts/ai-quality-engineering-consumer-ai-quality-engineering-api.json
+        run: npm run test:verify
+
   build:
     name: build
     runs-on: ubuntu-latest
@@ -112,7 +157,7 @@ jobs:
   quality-gate:
     name: quality-gate
     runs-on: ubuntu-latest
-    needs: [lint, unit, integration, build, coverage]
+    needs: [lint, unit, integration, build, coverage, contract, provider-verify]
     if: always()
     steps:
       - name: Check all jobs
@@ -121,7 +166,9 @@ jobs:
              [ "${{ needs.unit.result }}" != "success" ] || \
              [ "${{ needs.integration.result }}" != "success" ] || \
              [ "${{ needs.build.result }}" != "success" ] || \
-             [ "${{ needs.coverage.result }}" != "success" ]; then
+             [ "${{ needs.coverage.result }}" != "success" ] || \
+             [ "${{ needs.contract.result }}" != "success" ] || \
+             [ "${{ needs.provider-verify.result }}" != "success" ]; then
             echo "❌ Quality gate FAILED"
             exit 1
           fi
