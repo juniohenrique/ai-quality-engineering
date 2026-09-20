@@ -196,13 +196,29 @@ health check, rotas inexistentes e o ciclo completo de usuários.
 Os consumer contracts usam `@pact-foundation/pact` e ficam em
 `tests/contract/`. O contrato de usuário cobre `GET /users/:id`, incluindo
 método, path, headers, status e body esperados pelo consumidor. O teste também
-gera o arquivo JSON em `pacts/`.
+gera o arquivo JSON em `pacts/` (diretório versionado no `.gitignore`).
 
 Execute os contratos com:
 
 ```bash
 npm run test:contract
 ```
+
+A verificação do provider (`test:verify`) roda o `Verifier` do Pact contra o
+servidor real em memória. O endpoint `POST /setup` expõe os _provider states_
+para o ambiente de verificação, e o Pact Broker é opcional — defina
+`PACT_PACT_FILE` com o caminho do arquivo `.json` em `pacts/` para rodar sem
+broker (modo CI/local):
+
+```bash
+npm run test:verify
+# ou, apontando diretamente para o pact local:
+PACT_PACT_FILE=pacts/ai-quality-engineering-consumer-ai-quality-engineering-api.json \
+DATABASE_URL=postgresql://localhost:1/unavailable npm run test:verify
+```
+
+No CI, os jobs `contract` e `provider-verify` da workflow `.github/workflows/ci.yml`
+executam esses testes automaticamente em PRs para `develop`.
 
 ### Testes E2E
 

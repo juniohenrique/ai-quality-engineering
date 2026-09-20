@@ -9,15 +9,16 @@ describe("Provider Verification", () => {
   let serverStarted = false;
 
   beforeAll(async () => {
-    const { port } = loadEnv();
-    const baseUrl = `http://127.0.0.1:${port}`;
     const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
 
-    process.env.PORT = String(port);
     process.env.DATABASE_URL = runDatabaseIntegration
       ? (process.env.DATABASE_URL_TEST ??
         "postgres://postgres:postgres@localhost:5433/quality_test")
-      : "postgresql://127.0.0.1:1/unavailable";
+      : (process.env.DATABASE_URL ?? "postgresql://127.0.0.1:1/unavailable");
+    process.env.PORT = process.env.PORT ?? "3000";
+
+    const { port } = loadEnv();
+    const baseUrl = `http://127.0.0.1:${port}`;
 
     if (runDatabaseIntegration) {
       await resetDatabase();
@@ -64,18 +65,24 @@ describe("Provider Verification", () => {
     const { port } = loadEnv();
     const baseUrl = `http://127.0.0.1:${port}`;
 
+    const pactFile = process.env.PACT_PACT_FILE;
+
     const verifier = new Verifier({
       provider: pactOptions.provider,
       providerBaseUrl: baseUrl,
       providerVersion: "0.2.0",
-      pactBrokerUrl: pactBroker.baseUrl,
-      pactBrokerToken: pactBroker.token,
-      consumerVersionTags: ["main"],
-      publishVerificationResult: true,
+      ...(pactFile
+        ? { pactUrls: [pactFile] }
+        : {
+            pactBrokerUrl: pactBroker.baseUrl,
+            pactBrokerToken: pactBroker.token,
+            consumerVersionTags: ["main"],
+            publishVerificationResult: true,
+          }),
       verbose: true,
       providerStatesSetupUrl: `${baseUrl}/setup`,
     });
 
-    await verifier.verify();
+    await verifier.verifyProvider();
   });
 });
