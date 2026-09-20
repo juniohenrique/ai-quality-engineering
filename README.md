@@ -132,6 +132,9 @@ O projeto separa responsabilidades por camada:
 Uma descricao detalhada dos componentes e fluxos esta em
 [`docs/architecture.md`](docs/architecture.md).
 
+A estrategia de testes, suas camadas, dados, isolamento e fluxos E2E esta em
+[`docs/test-architecture.md`](docs/test-architecture.md).
+
 ### Health check
 
 O fluxo de `/health` e:
