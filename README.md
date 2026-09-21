@@ -198,6 +198,10 @@ Os consumer contracts usam `@pact-foundation/pact` e ficam em
 método, path, headers, status e body esperados pelo consumidor. O teste também
 gera o arquivo JSON em `pacts/` (diretório versionado no `.gitignore`).
 
+Para a estratégia completa — conceitos de consumer/provider, quando usar e
+quando não usar, trade‑offs e o passo a passo para adicionar novos contratos —
+consulte [`docs/test-architecture.md`](docs/test-architecture.md#contrato).
+
 Execute os contratos com:
 
 ```bash

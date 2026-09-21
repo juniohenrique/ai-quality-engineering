@@ -57,10 +57,35 @@ expect(found.body).toEqual(created.body);
 
 ### Contrato
 
-Testes de contrato verificam se uma fronteira preserva o formato esperado por
-quem consome a API. Esta camada está prevista na arquitetura, mas não faz parte
-do escopo atual. Quando for introduzida, os contratos devem validar métodos,
-rotas, payloads, status HTTP e respostas de erro sem repetir todos os fluxos E2E.
+**Conceitos**  
+- **Consumer** – quem consome a API (ex.: um serviço que faz requisições HTTP).  
+- **Provider** – quem implementa a API (nosso backend).  
+- **Contrato** – descrição formal (via Pact) do request esperado pelo consumer e da resposta que o provider deve devolver.  
+- **Verificação** – execução do *Provider verification* que roda o contrato contra o provider real.
+
+**Quando usar**  
+- Quando há **fronteira pública** entre serviços que evolui de forma independente.  
+- Para garantir que alterações de rota, payload ou códigos de status não quebrem consumidores existentes.  
+- Em pipelines CI para validar automaticamente contra alterações de código.
+
+**Quando não usar**  
+- Para **lógica interna** que não expõe API externa.  
+- Quando a comunicação é estritamente síncrona dentro do mesmo processo (ex.: chamadas internas).  
+- Se o custo de manutenção dos contracts supera o benefício (ex.: APIs muito voláteis com poucos consumidores).
+
+**Como adicionar um novo contrato**  
+1. Criar um diretório `tests/contract/` (já existente).  
+2. Definir o *consumer* e *provider* no arquivo `tests/contract/pact.config.ts`.  
+3. Escrever um teste consumer usando a API do Pact (`new PactV3(pactOptions)`) que descreve a requisição e a resposta esperada.  
+4. Executar `npm run test:contract` para gerar o arquivo JSON em `pacts/`.  
+5. Adicionar um teste de verificação do provider em `tests/contract/<nome>.provider.verify.ts` que inicia o servidor e chama `Verifier`.  
+6. Incluir o script no CI (`npm run test:verify`) ou usar o Pact Broker.
+
+**Trade‑offs**  
+- **Benefícios**: detecção precoce de quebras de contrato, documentação viva da API, suporte a múltiplos consumidores.  
+- **Custos**: manutenção dos arquivos de contrato, necessidade de manter o provider executável em CI, possível sobrecarga de tempo nos pipelines.
+
+Exemplo conceitual de contrato para `POST /users`:
 
 Exemplo conceitual de contrato para `POST /users`:
 
