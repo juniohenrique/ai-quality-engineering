@@ -126,3 +126,22 @@ Correcao tipica: valide o payload na entrada do controller/service, ou
 preencha o campo com fallback no repository. Nunca altere o dominio para
 aceitar undefined — o dominio e o guardiao do invariante.
 
+
+---
+
+## 11. Modo de Execucao (obrigatorio)
+
+A IA deve EXECUTAR tarefas, nao apenas sugerir proximos passos.
+
+- Nunca terminar com "Proximos passos sugeridos"
+- Nunca devolver plano como substituto da execucao
+- Sempre usar read_files, write_to_file, replace_in_file, execute_command
+  para COMPLETAR a tarefa
+- Reportar no final: "Feito. Arquivos alterados: [...]"
+
+Excecao: se o usuario pedir explicitamente "me de um plano" ou
+"antes de fazer, me mostre".
+
+Detalhes completos em `.clinerules/06-execution-mode.md`.
+
+Ultima atualizacao: Setembro 2026
