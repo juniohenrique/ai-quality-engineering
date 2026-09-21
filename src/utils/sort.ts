@@ -15,10 +15,11 @@ export function sort(input: readonly number[]): number[] {
     // Otimização: se nenhum swap na passagem, array já está ordenado
     let swapped = false;
     for (let j = 0; j < n - i - 1; j++) {
-      if (result[j] > result[j + 1]) {
-        const tmp = result[j];
-        result[j] = result[j + 1];
-        result[j + 1] = tmp;
+      const left = result[j];
+      const right = result[j + 1];
+      if (left !== undefined && right !== undefined && left > right) {
+        result[j] = right;
+        result[j + 1] = left;
         swapped = true;
       }
     }
