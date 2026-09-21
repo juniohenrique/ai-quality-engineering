@@ -295,7 +295,7 @@ Ao final, o Stryker:
 - cria um baseline em `docs/mutation-report.md` com score geral e arquivos problemáticos.
 
 Para ver os detalhes do baseline:
-- **[Relatório de Mutação (Baseline)](../docs/mutation-report.md)**
+- **[Relatório de Mutação (Score Final S04-05)](docs/mutation-report.md)**
 
     Os artefatos temporários do Stryker ficam em `stryker-tmp/` e já estão
     ignorados pelo `.gitignore`.
