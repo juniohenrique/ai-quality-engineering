@@ -292,9 +292,13 @@ Ao final, o Stryker:
 
 - imprime um relatório `clear-text` no console;
 - gera um relatório HTML em `reports/mutation/` (abra `reports/mutation/index.html`).
+- cria um baseline em `docs/mutation-report.md` com score geral e arquivos problemáticos.
 
-Os artefatos temporários do Stryker ficam em `stryker-tmp/` e já estão
-ignorados pelo `.gitignore`.
+Para ver os detalhes do baseline:
+- **[Relatório de Mutação (Baseline)](../docs/mutation-report.md)**
+
+    Os artefatos temporários do Stryker ficam em `stryker-tmp/` e já estão
+    ignorados pelo `.gitignore`.
 
 Dica: para acelerar em PRs grandes, use o modo incremental:
 
