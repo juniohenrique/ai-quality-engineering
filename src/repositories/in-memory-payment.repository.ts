@@ -1,5 +1,5 @@
-import type { PaymentRepository } from './payment.repository.js';
-import { Payment } from '../domain/payment.js';
+import type { PaymentRepository } from "./payment.repository.js";
+import { Payment } from "../domain/payment.js";
 
 export class InMemoryPaymentRepository implements PaymentRepository {
   private readonly payments: Payment[] = [];

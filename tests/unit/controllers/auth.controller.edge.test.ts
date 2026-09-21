@@ -6,8 +6,12 @@ function createResponse() {
   let body = "";
   return {
     response: {
-      writeHead: (code: number) => { statusCode = code; },
-      end: (responseBody: string) => { body = responseBody; },
+      writeHead: (code: number) => {
+        statusCode = code;
+      },
+      end: (responseBody: string) => {
+        body = responseBody;
+      },
     },
     getStatusCode: () => statusCode,
     getBody: () => body,
@@ -27,6 +31,9 @@ describe("POST /auth/login – input validation", () => {
     const output = createResponse();
     await controller.handleLogin(input as unknown, output.response as never);
     expect(output.getStatusCode()).toBe(400);
-    expect(JSON.parse(output.getBody())).toEqual({ error: "invalid_request", message: "Invalid request" });
+    expect(JSON.parse(output.getBody())).toEqual({
+      error: "invalid_request",
+      message: "Invalid request",
+    });
   });
 });

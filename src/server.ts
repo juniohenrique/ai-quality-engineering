@@ -8,11 +8,15 @@ import { UserController } from "./controllers/user.controller.js";
 import { HealthRepository } from "./repositories/health.repository.js";
 import { InMemoryUserRepository } from "./repositories/in-memory-user.repository.js";
 import { PostgresUserRepository } from "./repositories/postgres-user.repository.js";
+import { InMemoryPaymentRepository } from "./repositories/in-memory-payment.repository.js";
+import { PostgresPaymentRepository } from "./repositories/postgres-payment.repository.js";
 import { HealthService } from "./services/health.service.js";
 import { UserService } from "./services/user.service.js";
+import { PaymentService } from "./services/payment.service.js";
 import { writeErrorResponse } from "./http/error-response.js";
 import { AuthController } from "./controllers/auth.controller.js";
 import { User } from "./domain/user.js";
+import { PaymentController } from "./controllers/payment.controller.js";
 
 const { port, databaseUrl } = loadEnv();
 const pool = createPool(databaseUrl);
@@ -26,6 +30,13 @@ const userRepository =
     : new PostgresUserRepository(pool);
 const userService = new UserService(userRepository);
 const userController = new UserController(userService);
+const paymentRepository =
+  process.env.PAYMENT_REPOSITORY === "memory"
+    ? new InMemoryPaymentRepository()
+    : new PostgresPaymentRepository(pool);
+const paymentService = new PaymentService(paymentRepository);
+const paymentController = new PaymentController(paymentService);
+
 const authController = new AuthController();
 
 const readRequestBody = async (request: IncomingMessage): Promise<string> => {
@@ -115,6 +126,21 @@ const server = createServer(async (request, response) => {
     }
 
     await userController.handleList(response);
+    return;
+  }
+
+  if (requestUrl.pathname === "/payments") {
+    if (request.method === "POST") {
+      try {
+        const body = await readRequestBody(request);
+        await paymentController.handleCreate(JSON.parse(body), response);
+      } catch {
+        writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+      }
+      return;
+    }
+    // other methods not supported yet
+    writeErrorResponse(response, 404, "not_found", "Route not found");
     return;
   }
 

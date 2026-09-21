@@ -1,4 +1,4 @@
-import type { Payment } from '../domain/payment.js';
+import type { Payment } from "../domain/payment.js";
 
 export interface PaymentRepository {
   findById(id: string): Promise<Payment | undefined>;
