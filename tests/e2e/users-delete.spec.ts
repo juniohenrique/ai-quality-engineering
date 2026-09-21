@@ -24,7 +24,7 @@ test.describe('User Deletion Flow', () => {
     // Arrange: Cria um usuário primeiro para poder excluí-lo
     const timestamp = Date.now();
     const userToDelete = {
-      name: 'Roberto Deletado',
+      userName: 'Roberto Deletado',
       email: `roberto.deletado.${timestamp}@example.com`,
     };
 
@@ -64,7 +64,7 @@ test.describe('User Deletion Flow', () => {
     // Arrange: Cria um usuário primeiro
     const timestamp = Date.now();
     const userToKeep = {
-      name: 'Ana Preservada',
+      userName: 'Ana Preservada',
       email: `ana.preservada.${timestamp}@example.com`,
     };
 
@@ -104,11 +104,11 @@ test.describe('User Deletion Flow', () => {
     const timestamp = Date.now();
     const users = [
       {
-        name: 'Primeiro Usuário',
+        userName: 'Primeiro Usuário',
         email: `primeiro.${timestamp}@example.com`,
       },
       {
-        name: 'Segundo Usuário',
+        userName: 'Segundo Usuário',
         email: `segundo.${timestamp}@example.com`,
       },
     ];

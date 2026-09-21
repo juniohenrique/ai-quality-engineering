@@ -6,7 +6,7 @@ import { pactOptions } from "./pact.config.js";
 const user = {
   id: "user-1",
   email: "ada@example.com",
-  name: "Ada Lovelace",
+  userName: "Ada Lovelace",
 };
 
 describe("User API consumer contract", () => {

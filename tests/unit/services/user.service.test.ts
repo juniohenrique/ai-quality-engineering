@@ -23,13 +23,13 @@ describe("UserService", () => {
 
     const user = await service.createUser({
       email: " USER@EXAMPLE.COM ",
-      name: " Ada Lovelace ",
+      userName: " Ada Lovelace ",
     });
 
     expect(user).toEqual({
       id: expect.any(String),
       email: "user@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     expect(repository.findByEmail).toHaveBeenCalledWith("user@example.com");
     expect(repository.save).toHaveBeenCalledWith(user);
@@ -40,7 +40,7 @@ describe("UserService", () => {
     const existingUser = new User({
       id: "user-1",
       email: "user@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     vi.mocked(repository.findByEmail).mockResolvedValue(existingUser);
     const service = new UserService(repository);
@@ -48,7 +48,7 @@ describe("UserService", () => {
     await expect(
       service.createUser({
         email: "USER@EXAMPLE.COM",
-        name: "Another User",
+        userName: "Another User",
       }),
     ).rejects.toThrow("User email is already in use");
 
@@ -56,8 +56,8 @@ describe("UserService", () => {
   });
 
   it.each([
-    { email: "invalid-email", name: "Ada Lovelace" },
-    { email: "ada@example.com", name: "" },
+    { email: "invalid-email", userName: "Ada Lovelace" },
+    { email: "ada@example.com", userName: "" },
   ])("rejects invalid user data: %s", async (input) => {
     const repository = createRepository();
     vi.mocked(repository.findByEmail).mockResolvedValue(undefined);
@@ -72,7 +72,7 @@ describe("UserService", () => {
     const user = new User({
       id: "user-1",
       email: "user@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     vi.mocked(repository.findById).mockResolvedValue(user);
     const service = new UserService(repository);
@@ -87,7 +87,7 @@ describe("UserService", () => {
       new User({
         id: "user-1",
         email: "user@example.com",
-        name: "Ada Lovelace",
+        userName: "Ada Lovelace",
       }),
     ];
     vi.mocked(repository.findAll).mockResolvedValue(users);
@@ -102,7 +102,7 @@ describe("UserService", () => {
     const existingUser = new User({
       id: "user-1",
       email: "user@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     vi.mocked(repository.findById).mockResolvedValue(existingUser);
     vi.mocked(repository.findByEmail).mockResolvedValue(undefined);
@@ -112,17 +112,17 @@ describe("UserService", () => {
     await expect(
       service.updateUser("user-1", {
         email: "updated@example.com",
-        name: "Ada Byron Lovelace",
+        userName: "Ada Byron Lovelace",
       }),
     ).resolves.toEqual({
       id: "user-1",
       email: "updated@example.com",
-      name: "Ada Byron Lovelace",
+      userName: "Ada Byron Lovelace",
     });
     expect(repository.update).toHaveBeenCalledWith({
       id: "user-1",
       email: "updated@example.com",
-      name: "Ada Byron Lovelace",
+      userName: "Ada Byron Lovelace",
     });
   });
 
@@ -134,7 +134,7 @@ describe("UserService", () => {
     await expect(
       service.updateUser("missing-user", {
         email: "user@example.com",
-        name: "Ada Lovelace",
+        userName: "Ada Lovelace",
       }),
     ).resolves.toBeUndefined();
     expect(repository.update).not.toHaveBeenCalled();
@@ -145,12 +145,12 @@ describe("UserService", () => {
     const existingUser = new User({
       id: "user-1",
       email: "user@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
     const conflictingUser = new User({
       id: "user-2",
       email: "other@example.com",
-      name: "Grace Hopper",
+      userName: "Grace Hopper",
     });
     vi.mocked(repository.findById).mockResolvedValue(existingUser);
     vi.mocked(repository.findByEmail).mockResolvedValue(conflictingUser);
@@ -159,7 +159,7 @@ describe("UserService", () => {
     await expect(
       service.updateUser("user-1", {
         email: "other@example.com",
-        name: "Ada Byron Lovelace",
+        userName: "Ada Byron Lovelace",
       }),
     ).rejects.toThrow("User email is already in use");
     expect(repository.update).not.toHaveBeenCalled();
