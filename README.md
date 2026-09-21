@@ -167,6 +167,7 @@ Execute os comandos individualmente ou em conjunto:
 npm test
 npm run test:unit
 npm run test:integration
+npm run test:contract
 npm run test:e2e
 npm run test:coverage
 npm run build
@@ -189,6 +190,39 @@ job de coverage faz o pipeline falhar.
 Os testes de integração HTTP ficam em `src/server.integration.test.ts` e
 iniciam o servidor com um repositório de usuários em memória. A suíte valida
 health check, rotas inexistentes e o ciclo completo de usuários.
+
+### Contract testing
+
+Os consumer contracts usam `@pact-foundation/pact` e ficam em
+`tests/contract/`. O contrato de usuário cobre `GET /users/:id`, incluindo
+método, path, headers, status e body esperados pelo consumidor. O teste também
+gera o arquivo JSON em `pacts/` (diretório versionado no `.gitignore`).
+
+Para a estratégia completa — conceitos de consumer/provider, quando usar e
+quando não usar, trade‑offs e o passo a passo para adicionar novos contratos —
+consulte [`docs/test-architecture.md`](docs/test-architecture.md#contrato).
+
+Execute os contratos com:
+
+```bash
+npm run test:contract
+```
+
+A verificação do provider (`test:verify`) roda o `Verifier` do Pact contra o
+servidor real em memória. O endpoint `POST /setup` expõe os _provider states_
+para o ambiente de verificação, e o Pact Broker é opcional — defina
+`PACT_PACT_FILE` com o caminho do arquivo `.json` em `pacts/` para rodar sem
+broker (modo CI/local):
+
+```bash
+npm run test:verify
+# ou, apontando diretamente para o pact local:
+PACT_PACT_FILE=pacts/ai-quality-engineering-consumer-ai-quality-engineering-api.json \
+DATABASE_URL=postgresql://localhost:1/unavailable npm run test:verify
+```
+
+No CI, os jobs `contract` e `provider-verify` da workflow `.github/workflows/ci.yml`
+executam esses testes automaticamente em PRs para `develop`.
 
 ### Testes E2E
 
@@ -220,6 +254,21 @@ cobertura atual inclui:
 - remocao de usuario e resposta `404` pelo endpoint `DELETE /users/:id`.
 - respostas de erro padronizadas com `error` e `message`.
 - testes unitarios do `UserService` com cobertura de 100% no arquivo de servico.
+
+### Testes de propriedade
+
+Diferentemente dos testes de exemplo — que validam um caso específico, como
+`age = 18` ao buscar usuários —, os testes de propriedade verificam invariantes
+para entradas geradas aleatoriamente pelo `fast-check`. O exemplo em
+`tests/property/example.test.ts` assegura que `sort(sort(x)) === sort(x)`, só
+para validar que o toolchain funciona. O número de execuções é controlado pela
+variável `FAST_CHECK_NUM_RUNS` (padrão `10`).
+
+Execute com:
+
+```bash
+npm run test:property
+```
 
 ## Estrutura
 

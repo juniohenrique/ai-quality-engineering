@@ -4,18 +4,19 @@ Fonte única de verdade. Consumido por Cline, GitHub Copilot Chat e humanos.
 
 ## 1. Contexto
 
-Projeto de AI Quality Engineering. Stack: Node.js, TypeScript, HTTP nativo, 
+Projeto de AI Quality Engineering. Stack: Node.js, TypeScript, HTTP nativo,
 HTML/CSS/JS vanilla no frontend, PostgreSQL, RabbitMQ, Vitest, Playwright.
 
 ## 2. Padrões de Código
 
-TypeScript sempre. Nomes em kebab-case (arquivos), camelCase (variáveis), 
-PascalCase (classes). Controllers orquestram, Services têm lógica, Repositories 
+TypeScript sempre. Nomes em kebab-case (arquivos), camelCase (variáveis),
+PascalCase (classes). Controllers orquestram, Services têm lógica, Repositories
 isolam dados. Frontend sem frameworks e sem bibliotecas CSS.
 
 ## 3. UI (HTML/CSS/JS)
 
 Arquitetura:
+
 - public/css/base.css — tokens, reset, componentes compartilhados
 - public/css/<pagina>.css — estilos específicos
 - Importar base.css antes do específico
@@ -72,4 +73,75 @@ botão primário com hover translateY(-1px), @media (max-width: 640px).
 6. Gerar .tmp/pr_body.md.
 7. Mostrar antes de push.
 
-Última atualização: Setembro 2026
+---
+
+## 9. Checks do CI antes do commit
+
+Antes de propor qualquer commit, push ou PR, a IA deve rodar localmente
+os mesmos jobs do CI. Se um falhar, corrija antes — nao commite quebrado.
+
+Jobs (ordem oficial):
+
+1. lint
+2. unit
+3. integration
+4. contract
+5. build
+6. provider-verify
+7. coverage
+8. quality-gate
+
+Comandos tipicos (confirme no package.json):
+
+    npm run lint
+    npm run test:unit
+    npm run test:integration
+    npm run test:contract
+    npm run build
+    npm run provider:verify
+    npm run test:coverage
+    npm run quality:gate
+
+Skill dedicada: `.cline/skills/ci-check/SKILL.md`.
+
+Comportamento esperado:
+
+- Reportar resultado com checkboxes por job
+- Se falhar, propor correcao minima primeiro
+- Só propor commit depois que todos passarem
+- Nunca alterar testes para "forcar" passar sem entender a causa raiz
+
+## 10. Erros comuns no CI (base de conhecimento)
+
+### TypeError: Cannot read properties of undefined (reading 'trim')
+
+Causa: um campo obrigatorio chegou como undefined no dominio ou repository.
+
+Exemplo real (S02): `src/domain/user.ts:15` — `properties.userName.trim()`
+falhou porque `userName` era undefined. Isso indica que:
+
+- O teste de integracao nao esta passando `userName` no payload, OU
+- O servico/repository nao esta preenchendo o campo antes de instanciar User
+
+Correcao tipica: valide o payload na entrada do controller/service, ou
+preencha o campo com fallback no repository. Nunca altere o dominio para
+aceitar undefined — o dominio e o guardiao do invariante.
+
+---
+
+## 11. Modo de Execucao (obrigatorio)
+
+A IA deve EXECUTAR tarefas, nao apenas sugerir proximos passos.
+
+- Nunca terminar com "Proximos passos sugeridos"
+- Nunca devolver plano como substituto da execucao
+- Sempre usar read_files, write_to_file, replace_in_file, execute_command
+  para COMPLETAR a tarefa
+- Reportar no final: "Feito. Arquivos alterados: [...]"
+
+Excecao: se o usuario pedir explicitamente "me de um plano" ou
+"antes de fazer, me mostre".
+
+Detalhes completos em `.clinerules/06-execution-mode.md`.
+
+Ultima atualizacao: Setembro 2026

@@ -28,7 +28,7 @@ describeDatabase("PostgresUserRepository integration", () => {
     const user = new User({
       id: randomUUID(),
       email: `integration-${randomUUID()}@example.com`,
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
 
     await repository.save(user);
@@ -40,8 +40,8 @@ describeDatabase("PostgresUserRepository integration", () => {
 
   it("maps the unique email constraint", async () => {
     const email = `duplicate-${randomUUID()}@example.com`;
-    const firstUser = new User({ id: randomUUID(), email, name: "Ada" });
-    const secondUser = new User({ id: randomUUID(), email, name: "Grace" });
+    const firstUser = new User({ id: randomUUID(), email, userName: "Ada" });
+    const secondUser = new User({ id: randomUUID(), email, userName: "Grace" });
 
     await repository.save(firstUser);
     await expect(repository.save(secondUser)).rejects.toBeInstanceOf(EmailAlreadyExistsError);

@@ -51,7 +51,10 @@ describe("serveStatic", () => {
     const output = createResponse();
 
     await expect(
-      serveStatic({ method: "GET", url, headers: { accept: "text/html" } } as never, output.response as never),
+      serveStatic(
+        { method: "GET", url, headers: { accept: "text/html" } } as never,
+        output.response as never,
+      ),
     ).resolves.toBe(true);
 
     expect(output.getResult()).toMatchObject({

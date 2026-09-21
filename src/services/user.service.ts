@@ -4,7 +4,7 @@ import type { UserRepository } from "../repositories/user.repository.js";
 
 export interface CreateUserInput {
   email: string;
-  name: string;
+  userName: string;
 }
 
 export type UpdateUserInput = CreateUserInput;
@@ -23,7 +23,7 @@ export class UserService {
     const user = new User({
       id: randomUUID(),
       email,
-      name: input.name,
+      userName: input.userName,
     });
 
     await this.repository.save(user);
@@ -55,7 +55,7 @@ export class UserService {
     const updatedUser = new User({
       id,
       email,
-      name: input.name,
+      userName: input.userName,
     });
 
     await this.repository.update(updatedUser);

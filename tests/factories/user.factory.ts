@@ -3,7 +3,7 @@ import { User, type UserProperties } from "../../src/domain/user.js";
 const defaultUser: UserProperties = {
   id: "user-1",
   email: "user@example.com",
-  name: "Ada Lovelace",
+  userName: "Ada Lovelace",
 };
 
 export class UserFactory {
@@ -13,10 +13,7 @@ export class UserFactory {
   }
 
   /** Creates deterministic users with distinct IDs for batch scenarios. */
-  static createMany(
-    count: number,
-    overrides: Partial<UserProperties> = {},
-  ): User[] {
+  static createMany(count: number, overrides: Partial<UserProperties> = {}): User[] {
     if (!Number.isInteger(count) || count < 0) {
       throw new Error("User count must be a non-negative integer");
     }

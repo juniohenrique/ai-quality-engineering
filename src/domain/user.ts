@@ -1,18 +1,18 @@
 export interface UserProperties {
   id: string;
   email: string;
-  name: string;
+  userName: string;
 }
 
 export class User {
   readonly id: string;
   readonly email: string;
-  readonly name: string;
+  readonly userName: string;
 
   constructor(properties: UserProperties) {
     const id = properties.id.trim();
     const email = properties.email.trim().toLowerCase();
-    const name = properties.name.trim();
+    const userName = properties.userName.trim();
 
     if (!id) {
       throw new Error("User id is required");
@@ -22,12 +22,12 @@ export class User {
       throw new Error("User email is invalid");
     }
 
-    if (!name) {
+    if (!userName) {
       throw new Error("User name is required");
     }
 
     this.id = id;
     this.email = email;
-    this.name = name;
+    this.userName = userName;
   }
 }

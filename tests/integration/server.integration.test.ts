@@ -7,6 +7,20 @@ const baseUrl = `http://127.0.0.1:${port}`;
 const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
 const userApi = new UserApiClient(baseUrl);
 
+async function waitForServer(timeoutMs = 10000): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      await userApi.getAll();
+      return;
+    } catch {
+      // server not ready yet — keep retrying
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Server did not start within ${timeoutMs}ms`);
+}
+
 beforeAll(async () => {
   process.env.PORT = String(port);
   process.env.DATABASE_URL = runDatabaseIntegration
@@ -20,17 +34,8 @@ beforeAll(async () => {
   }
   await import("../../src/server.js");
 
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    try {
-      await userApi.getAll();
-      return;
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-  }
-
-  throw new Error("Server did not start");
-});
+  await waitForServer();
+}, 15000);
 
 afterAll(async () => {
   process.emit("SIGTERM");
@@ -68,10 +73,10 @@ describe("HTTP API", () => {
   });
 
   it("creates, finds, updates, and deletes a user", async () => {
-    const created = await userApi.create({ email: "ada@example.com", name: "Ada Lovelace" });
+    const created = await userApi.create({ email: "ada@example.com", userName: "Ada Lovelace" });
     expect(created.status).toBe(201);
     const user = created.body;
-    expect(user).toMatchObject({ email: "ada@example.com", name: "Ada Lovelace" });
+    expect(user).toMatchObject({ email: "ada@example.com", userName: "Ada Lovelace" });
 
     const found = await userApi.getById(user.id);
     expect(found.status).toBe(200);
@@ -79,13 +84,13 @@ describe("HTTP API", () => {
 
     const updated = await userApi.update(user.id, {
       email: "ada.updated@example.com",
-      name: "Ada Byron Lovelace",
+      userName: "Ada Byron Lovelace",
     });
     expect(updated.status).toBe(200);
     expect(updated.body).toMatchObject({
       id: user.id,
       email: "ada.updated@example.com",
-      name: "Ada Byron Lovelace",
+      userName: "Ada Byron Lovelace",
     });
 
     const deleted = await userApi.delete(user.id);

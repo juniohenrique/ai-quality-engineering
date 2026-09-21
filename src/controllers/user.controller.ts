@@ -100,9 +100,9 @@ function isCreateUserInput(input: unknown): input is CreateUserInput {
   const candidate = input as Record<string, unknown>;
   return (
     typeof candidate.email === "string" &&
-    typeof candidate.name === "string" &&
+    typeof candidate.userName === "string" &&
     candidate.email.trim().length > 0 &&
-    candidate.name.trim().length > 0
+    candidate.userName.trim().length > 0
   );
 }
 

@@ -7,7 +7,7 @@ describe("UserFactory", () => {
     expect(UserFactory.create()).toEqual({
       id: "user-1",
       email: "user@example.com",
-      name: "Ada Lovelace",
+      userName: "Ada Lovelace",
     });
   });
 
@@ -15,12 +15,12 @@ describe("UserFactory", () => {
     expect(
       UserFactory.create({
         id: "user-2",
-        name: "Grace Hopper",
+        userName: "Grace Hopper",
       }),
     ).toEqual({
       id: "user-2",
       email: "user@example.com",
-      name: "Grace Hopper",
+      userName: "Grace Hopper",
     });
   });
 

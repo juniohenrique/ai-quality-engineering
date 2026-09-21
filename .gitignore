@@ -41,6 +41,7 @@ allure-report/
 stryker-tmp/
 reports/mutation/
 .report/
+pacts/
 
 # ------------------------------------------------------------
 # Cache de ferramentas
@@ -231,3 +232,6 @@ $RECYCLE.BIN/
 kubeconfig
 *.kubeconfig
 helm-charts/
+scripts/assign-sprint.sh
+scripts/get-projects-ids.sh
+scripts/setup-sprints.sh

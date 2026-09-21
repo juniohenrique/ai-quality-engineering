@@ -12,6 +12,7 @@ import { HealthService } from "./services/health.service.js";
 import { UserService } from "./services/user.service.js";
 import { writeErrorResponse } from "./http/error-response.js";
 import { AuthController } from "./controllers/auth.controller.js";
+import { User } from "./domain/user.js";
 
 const { port, databaseUrl } = loadEnv();
 const pool = createPool(databaseUrl);
@@ -51,6 +52,31 @@ const server = createServer(async (request, response) => {
     } catch {
       writeErrorResponse(response, 400, "invalid_request", "Invalid request");
     }
+    return;
+  }
+
+  if (requestUrl.pathname === "/setup" && request.method === "POST") {
+    const body = await readRequestBody(request);
+    let state = "";
+    try {
+      const payload = JSON.parse(body) as { state?: string };
+      state = payload.state ?? "";
+    } catch {
+      // ignore body when it is not a JSON object, no state to set up
+    }
+
+    if (state === "a user with id user-1 exists") {
+      await userRepository.save(
+        new User({
+          id: "user-1",
+          email: "ada@example.com",
+          userName: "Ada Lovelace",
+        }),
+      );
+    }
+
+    response.writeHead(201, { "content-type": "application/json" });
+    response.end(JSON.stringify({ ok: true, state }));
     return;
   }
 

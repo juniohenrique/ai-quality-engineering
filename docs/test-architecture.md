@@ -57,10 +57,40 @@ expect(found.body).toEqual(created.body);
 
 ### Contrato
 
-Testes de contrato verificam se uma fronteira preserva o formato esperado por
-quem consome a API. Esta camada está prevista na arquitetura, mas não faz parte
-do escopo atual. Quando for introduzida, os contratos devem validar métodos,
-rotas, payloads, status HTTP e respostas de erro sem repetir todos os fluxos E2E.
+**Conceitos**
+
+- **Consumer** – quem consome a API (ex.: um serviço que faz requisições HTTP).
+- **Provider** – quem implementa a API (nosso backend).
+- **Contrato** – descrição formal (via Pact) do request esperado pelo consumer e da resposta que o provider deve devolver.
+- **Verificação** – execução do _Provider verification_ que roda o contrato contra o provider real.
+
+**Quando usar**
+
+- Quando há **fronteira pública** entre serviços que evolui de forma independente.
+- Para garantir que alterações de rota, payload ou códigos de status não quebrem consumidores existentes.
+- Em pipelines CI para validar automaticamente contra alterações de código.
+
+**Quando não usar**
+
+- Para **lógica interna** que não expõe API externa.
+- Quando a comunicação é estritamente síncrona dentro do mesmo processo (ex.: chamadas internas).
+- Se o custo de manutenção dos contracts supera o benefício (ex.: APIs muito voláteis com poucos consumidores).
+
+**Como adicionar um novo contrato**
+
+1. Criar um diretório `tests/contract/` (já existente).
+2. Definir o _consumer_ e _provider_ no arquivo `tests/contract/pact.config.ts`.
+3. Escrever um teste consumer usando a API do Pact (`new PactV3(pactOptions)`) que descreve a requisição e a resposta esperada.
+4. Executar `npm run test:contract` para gerar o arquivo JSON em `pacts/`.
+5. Adicionar um teste de verificação do provider em `tests/contract/<nome>.provider.verify.ts` que inicia o servidor e chama `Verifier`.
+6. Incluir o script no CI (`npm run test:verify`) ou usar o Pact Broker.
+
+**Trade‑offs**
+
+- **Benefícios**: detecção precoce de quebras de contrato, documentação viva da API, suporte a múltiplos consumidores.
+- **Custos**: manutenção dos arquivos de contrato, necessidade de manter o provider executável em CI, possível sobrecarga de tempo nos pipelines.
+
+Exemplo conceitual de contrato para `POST /users`:
 
 Exemplo conceitual de contrato para `POST /users`:
 
@@ -193,3 +223,121 @@ a suíte com `RUN_DB_INTEGRATION=true`; para validações HTTP rápidas, o
 repository em memória reduz custo e dependências. Essa escolha deve aparecer
 no nome ou na configuração do teste para que a diferença de cobertura fique
 explícita.
+
+## Shrinking (fast-check)
+
+### O que é
+
+Shrinking é o mecanismo que o **fast-check** usa para **minimizar** o contraexemplo quando uma propriedade falha. Sem shrinking, você receberia o primeiro input aleatório que falhou (potencialmente muito grande e difícil de analisar). Com shrinking, o fast-check tenta reduzir esse input ao menor caso ainda capaz de reproduzir a falha, facilitando o diagnóstico.
+
+### Como funciona
+
+1. **Geração** – fast-check gera um input aleatório que satisfaz os _arbitraries_ definidos.
+2. **Execução** – a propriedade é avaliada com esse input.
+3. **Falha** – se a propriedade falha, o mecanismo de shrinking entra em ação.
+4. **Redução** – o framework tenta mutar o input removendo partes, diminuindo valores, simplificando estruturas, etc., sempre verificando se a propriedade ainda falha.
+5. **Iteração** – o processo repete até que nenhuma redução adicional mantenha a falha.
+6. **Reporte** – o contraexemplo mínimo encontrado é exibido no console.
+
+### Como interpretar o output
+
+```
+Counterexample: [[1,0]]
+Shrunk 12 time(s)
+```
+
+- **Counterexample** – o input mínimo que ainda causa a falha.
+- **Shrunk N time(s)** – quantas iterações de redução foram necessárias. Um número alto indica que o input original era bastante complexo.
+
+### Exemplos reais
+
+#### Exemplo 1 – array desordenado
+
+```ts
+// propriedade falsa: qualquer array deve estar ordenado
+fc.assert(
+  fc.property(fc.array(fc.integer(), { minLength: 2 }), (arr) => {
+    const sorted = [...arr].sort((a, b) => a - b);
+    expect(sorted).toEqual(arr); // falha
+  }),
+);
+```
+
+**Output** (exemplo típico):
+
+```
+Counterexample: [[1,0]]
+Shrunk 7 time(s)
+```
+
+O fast-check reduziu um array possivelmente grande até o menor `[1,0]` que ainda está desordenado.
+
+#### Exemplo 2 – string vazia
+
+```ts
+fc.assert(
+  fc.property(fc.string({ minLength: 1 }), (s) => {
+    expect(s).toBe(""); // propriedade falsa
+  }),
+);
+```
+
+**Output**:
+
+```
+Counterexample: "a"
+Shrunk 3 time(s)
+```
+
+A string foi encurtada até o menor caso não‑vazio que ainda viola a expectativa.
+
+#### Exemplo 3 – número negativo
+
+```ts
+fc.assert(
+  fc.property(fc.nat({ max: 1000 }), (n) => {
+    expect(n).toBeLessThan(0); // propriedade falsa
+  }),
+);
+```
+
+**Output**:
+
+```
+Counterexample: 0
+Shrunk 5 time(s)
+```
+
+O número foi reduzido ao menor valor que ainda não satisfaz `< 0`.
+
+#### Exemplo 4 – múltiplos arbitraries
+
+```ts
+fc.assert(
+  fc.property(fc.array(fc.integer(), { minLength: 2 }), fc.string({ minLength: 1 }), (arr, s) => {
+    const sorted = [...arr].sort((a, b) => a - b);
+    return JSON.stringify(sorted) === JSON.stringify(arr) && s === "";
+  }),
+);
+```
+
+**Output**:
+
+```
+Counterexample: [[1,0],"a"]
+Shrunk 9 time(s)
+```
+
+Ambos os arbitraries foram encurtados simultaneamente.
+
+### Boas práticas
+
+- **Utilize shrinking** sempre que houver falha; ele costuma encontrar o caso mais simples automaticamente.
+- **Limite o número de runs** (`numRuns`) ao depurar, para acelerar a captura do contraexemplo.
+- **Escreva propriedades claras**; falhas inesperadas podem gerar contraexemplos difíceis de interpretar.
+
+### Limitações
+
+- Nem todos os tipos são shrinkeáveis da mesma forma; objetos complexos podem precisar de arbitraries customizados.
+- O algoritmo pode ser custoso para estruturas muito grandes – pode ser necessário limitar o tamanho máximo dos arbitraries.
+- Em algumas situações, o contraexemplo mínimo ainda pode ser grande se a propriedade envolver invariantes que só se manifestam em combinações específicas.
