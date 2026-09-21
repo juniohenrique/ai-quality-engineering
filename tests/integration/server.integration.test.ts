@@ -7,6 +7,20 @@ const baseUrl = `http://127.0.0.1:${port}`;
 const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
 const userApi = new UserApiClient(baseUrl);
 
+async function waitForServer(timeoutMs = 10000): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      await userApi.getAll();
+      return;
+    } catch {
+      // server not ready yet — keep retrying
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Server did not start within ${timeoutMs}ms`);
+}
+
 beforeAll(async () => {
   process.env.PORT = String(port);
   process.env.DATABASE_URL = runDatabaseIntegration
@@ -20,17 +34,8 @@ beforeAll(async () => {
   }
   await import("../../src/server.js");
 
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    try {
-      await userApi.getAll();
-      return;
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-  }
-
-  throw new Error("Server did not start");
-});
+  await waitForServer();
+}, 15000);
 
 afterAll(async () => {
   process.emit("SIGTERM");
