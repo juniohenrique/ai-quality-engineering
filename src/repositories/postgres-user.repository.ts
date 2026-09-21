@@ -34,9 +34,9 @@ export class PostgresUserRepository implements UserRepository {
     return result.rows.map(toUser);
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+    async findByEmail(email: string): Promise<User | undefined> {
     const result = await this.pool.query<UserRow>(
-      "SELECT id, email, user_name AS userName FROM users WHERE email = $1",
+      "SELECT id, email, user_name AS \"userName\" FROM users WHERE email = $1",
       [email],
     );
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -44,7 +44,7 @@ export class PostgresUserRepository implements UserRepository {
 
   async findById(id: string): Promise<User | undefined> {
     const result = await this.pool.query<UserRow>(
-      "SELECT id, email, user_name AS userName FROM users WHERE id = $1",
+      "SELECT id, email, user_name AS \"userName\" FROM users WHERE id = $1",
       [id],
     );
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
