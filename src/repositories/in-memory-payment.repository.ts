@@ -1,4 +1,3 @@
-import type { Pool } from 'pg';
 import type { PaymentRepository } from './payment.repository.js';
 import { Payment } from '../domain/payment.js';
 
