@@ -1,6 +1,10 @@
 {
   "name": "ai-quality-engineering",
+<<<<<<< HEAD
   "version": "0.3.0",
+=======
+  "version": "0.2.0",
+>>>>>>> origin/main
   "description": "AI Quality Engineering Platform — Senior QA → SDET → AI Quality Engineer",
   "type": "module",
   "engines": {
