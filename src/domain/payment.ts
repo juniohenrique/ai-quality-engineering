@@ -4,7 +4,7 @@ export interface PaymentProperties {
   userId: string;
   amount: number;
   currency: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: "pending" | "completed" | "failed";
   createdAt: Date;
 }
 
@@ -14,7 +14,7 @@ export class Payment {
   readonly userId: string;
   readonly amount: number;
   readonly currency: string;
-  readonly status: 'pending' | 'completed' | 'failed';
+  readonly status: "pending" | "completed" | "failed";
   readonly createdAt: Date;
 
   constructor(props: PaymentProperties) {
@@ -27,22 +27,22 @@ export class Payment {
     const createdAt = props.createdAt instanceof Date ? props.createdAt : new Date(props.createdAt);
 
     if (!id) {
-      throw new Error('Payment id is required');
+      throw new Error("Payment id is required");
     }
     if (!idempotencyKey) {
-      throw new Error('Payment idempotencyKey is required');
+      throw new Error("Payment idempotencyKey is required");
     }
     if (!userId) {
-      throw new Error('Payment userId is required');
+      throw new Error("Payment userId is required");
     }
-    if (typeof amount !== 'number' || Number.isNaN(amount) || amount <= 0) {
-      throw new Error('Payment amount must be a positive number');
+    if (typeof amount !== "number" || Number.isNaN(amount) || amount <= 0) {
+      throw new Error("Payment amount must be a positive number");
     }
     if (!currency) {
-      throw new Error('Payment currency is required');
+      throw new Error("Payment currency is required");
     }
-    if (!['pending', 'completed', 'failed'].includes(status)) {
-      throw new Error('Payment status is invalid');
+    if (!["pending", "completed", "failed"].includes(status)) {
+      throw new Error("Payment status is invalid");
     }
 
     this.id = id;
@@ -50,7 +50,7 @@ export class Payment {
     this.userId = userId;
     this.amount = amount;
     this.currency = currency;
-    this.status = status as 'pending' | 'completed' | 'failed';
+    this.status = status as "pending" | "completed" | "failed";
     this.createdAt = createdAt;
   }
 }

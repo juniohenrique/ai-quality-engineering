@@ -69,15 +69,11 @@ it.skip("número: demonstra shrinking de número grande para pequeno", () => {
  */
 it.skip("múltiplos: array + string", () => {
   fc.assert(
-    fc.property(
-      fc.array(fc.integer(), { minLength: 2 }),
-      fc.string({ minLength: 1 }),
-      (arr, s) => {
-        const sorted = [...arr].sort((a, b) => a - b);
-        // Falha se o array não está ordenado ou a string não está vazia
-        return JSON.stringify(sorted) === JSON.stringify(arr) && s === "";
-      },
-    ),
+    fc.property(fc.array(fc.integer(), { minLength: 2 }), fc.string({ minLength: 1 }), (arr, s) => {
+      const sorted = [...arr].sort((a, b) => a - b);
+      // Falha se o array não está ordenado ou a string não está vazia
+      return JSON.stringify(sorted) === JSON.stringify(arr) && s === "";
+    }),
     { numRuns: 1 },
   );
 });

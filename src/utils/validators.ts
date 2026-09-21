@@ -29,7 +29,7 @@ export function isValidEmail(value: unknown): boolean {
   if (domain.length === 0) return false;
   if (!domain.includes(".")) return false;
   // Ensure there is at least one character after the last dot
-  const dotIdx = domain.lastIndexOf('.');
+  const dotIdx = domain.lastIndexOf(".");
   if (dotIdx === domain.length - 1) return false; // ends with dot
   if (dotIdx === 0) return false; // starts with dot
   // Ensure the part after dot is not empty

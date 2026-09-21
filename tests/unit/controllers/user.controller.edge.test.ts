@@ -8,8 +8,12 @@ function createResponse() {
   let body = "";
   return {
     response: {
-      writeHead: (code: number) => { statusCode = code; },
-      end: (responseBody: string) => { body = responseBody; },
+      writeHead: (code: number) => {
+        statusCode = code;
+      },
+      end: (responseBody: string) => {
+        body = responseBody;
+      },
     },
     getStatusCode: () => statusCode,
     getBody: () => body,
@@ -19,14 +23,23 @@ function createResponse() {
 describe("POST /users – duplicate email handling", () => {
   it("maps EMAIL_ALREADY_EXISTS error to 409", async () => {
     const controller = new UserController({
-      createUser: vi.fn().mockRejectedValue((() => { const e = new Error("dup"); (e as unknown as { code: string }).code = "EMAIL_ALREADY_EXISTS"; return e; })()),
+      createUser: vi.fn().mockRejectedValue(
+        (() => {
+          const e = new Error("dup");
+          (e as unknown as { code: string }).code = "EMAIL_ALREADY_EXISTS";
+          return e;
+        })(),
+      ),
       deleteUser: vi.fn(),
       findUserById: vi.fn(),
       listUsers: vi.fn(),
       updateUser: vi.fn(),
     });
     const output = createResponse();
-    await controller.handleCreate({ email: "dup@example.com", userName: "Dup" }, output.response as never);
+    await controller.handleCreate(
+      { email: "dup@example.com", userName: "Dup" },
+      output.response as never,
+    );
     expect(output.getStatusCode()).toBe(409);
     expect(JSON.parse(output.getBody())).toEqual({ error: "email_already_exists", message: "dup" });
   });
@@ -39,12 +52,18 @@ describe("PUT /users/:id – duplicate email handling", () => {
     const controller = new UserController({
       createUser: vi.fn(),
       deleteUser: vi.fn(),
-      findUserById: vi.fn().mockResolvedValue({ id: "1", email: "old@example.com", userName: "Old" }),
+      findUserById: vi
+        .fn()
+        .mockResolvedValue({ id: "1", email: "old@example.com", userName: "Old" }),
       listUsers: vi.fn(),
       updateUser: vi.fn().mockRejectedValue(emailError),
     });
     const output = createResponse();
-    await controller.handleUpdate("1", { email: "dup@example.com", userName: "Dup" }, output.response as never);
+    await controller.handleUpdate(
+      "1",
+      { email: "dup@example.com", userName: "Dup" },
+      output.response as never,
+    );
     expect(output.getStatusCode()).toBe(409);
     expect(JSON.parse(output.getBody())).toEqual({ error: "email_already_exists", message: "dup" });
   });
@@ -60,6 +79,9 @@ describe("POST /users – whitespace validation", () => {
     const output = createResponse();
     await controller.handleCreate(input, output.response as never);
     expect(output.getStatusCode()).toBe(400);
-    expect(JSON.parse(output.getBody())).toEqual({ error: "invalid_request", message: "Invalid request" });
+    expect(JSON.parse(output.getBody())).toEqual({
+      error: "invalid_request",
+      message: "Invalid request",
+    });
   });
 });

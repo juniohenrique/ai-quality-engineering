@@ -3,5 +3,5 @@ export interface CreatePaymentDTO {
   userId: string;
   amount: number;
   currency: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: "pending" | "completed" | "failed";
 }

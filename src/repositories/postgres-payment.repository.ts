@@ -1,6 +1,6 @@
-import type { Pool } from 'pg';
-import type { PaymentRepository } from './payment.repository.js';
-import { Payment } from '../domain/payment.js';
+import type { Pool } from "pg";
+import type { PaymentRepository } from "./payment.repository.js";
+import { Payment } from "../domain/payment.js";
 
 interface PaymentRow {
   id: string;
@@ -13,19 +13,16 @@ interface PaymentRow {
 }
 
 export class PostgresPaymentRepository implements PaymentRepository {
-  constructor(private readonly pool: Pick<Pool, 'query'>) {}
+  constructor(private readonly pool: Pick<Pool, "query">) {}
 
   async findById(id: string): Promise<Payment | undefined> {
-    const result = await this.pool.query<PaymentRow>(
-      'SELECT * FROM payments WHERE id = $1',
-      [id],
-    );
+    const result = await this.pool.query<PaymentRow>("SELECT * FROM payments WHERE id = $1", [id]);
     return result.rows[0] ? this.toPayment(result.rows[0]) : undefined;
   }
 
   async findByIdempotencyKey(key: string): Promise<Payment | undefined> {
     const result = await this.pool.query<PaymentRow>(
-      'SELECT * FROM payments WHERE idempotency_key = $1',
+      "SELECT * FROM payments WHERE idempotency_key = $1",
       [key],
     );
     return result.rows[0] ? this.toPayment(result.rows[0]) : undefined;
@@ -54,7 +51,7 @@ export class PostgresPaymentRepository implements PaymentRepository {
       userId: row.user_id,
       amount: Number(row.amount),
       currency: row.currency,
-      status: row.status as unknown as 'pending' | 'completed' | 'failed',
+      status: row.status as unknown as "pending" | "completed" | "failed",
       createdAt: row.created_at,
     });
   }
