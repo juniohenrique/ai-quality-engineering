@@ -255,6 +255,21 @@ cobertura atual inclui:
 - respostas de erro padronizadas com `error` e `message`.
 - testes unitarios do `UserService` com cobertura de 100% no arquivo de servico.
 
+### Testes de propriedade
+
+Diferentemente dos testes de exemplo — que validam um caso específico, como
+`age = 18` ao buscar usuários —, os testes de propriedade verificam invariantes
+para entradas geradas aleatoriamente pelo `fast-check`. O exemplo em
+`tests/property/example.test.ts` assegura que `sort(sort(x)) === sort(x)`, só
+para validar que o toolchain funciona. O número de execuções é controlado pela
+variável `FAST_CHECK_NUM_RUNS` (padrão `10`).
+
+Execute com:
+
+```bash
+npm run test:property
+```
+
 ## Estrutura
 
 ```text
