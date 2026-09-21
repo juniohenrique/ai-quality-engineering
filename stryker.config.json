@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/stryker-schema.json",
+  "mutate": ["src/**/*.ts", "!src/**/*.spec.ts", "!src/**/*.test.ts", "!src/**/*.d.ts"],
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "concurrency": 2,
+  "reporters": ["clear-text", "html"],
+  "tempDirName": "stryker-tmp",
+  "cleanTempDir": true,
+  "htmlReporter": {
+    "fileName": "reports/mutation/index.html"
+  }
+}

@@ -270,6 +270,38 @@ Execute com:
 npm run test:property
 ```
 
+### Testes de mutação
+
+Os testes de mutação validam a qualidade das suítes de teste ao introduzir
+mutações (ou "mutants") no código fonte e verificar se algum teste falha. O
+objetivo é garantir que os testes detectem mudanças sutis na lógica, e não
+apenas executem o código. A ferramenta usada é o [Stryker](https://stryker-mutator.io/)
+via o runner do Vitest.
+
+A configuração está em `stryker.config.json` e cobre todos os arquivos em
+`src/**/*.ts`, excluindo arquivos de teste (`*.spec.ts`, `*.test.ts`) e
+declarações de tipo (`*.d.ts`).
+
+Execute com:
+
+```bash
+npm run test:mutation
+```
+
+Ao final, o Stryker:
+
+- imprime um relatório `clear-text` no console;
+- gera um relatório HTML em `reports/mutation/` (abra `reports/mutation/index.html`).
+
+Os artefatos temporários do Stryker ficam em `stryker-tmp/` e já estão
+ignorados pelo `.gitignore`.
+
+Dica: para acelerar em PRs grandes, use o modo incremental:
+
+```bash
+npx stryker run --incremental
+```
+
 ## Estrutura
 
 ```text
