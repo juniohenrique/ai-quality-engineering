@@ -224,7 +224,6 @@ repository em memória reduz custo e dependências. Essa escolha deve aparecer
 no nome ou na configuração do teste para que a diferença de cobertura fique
 explícita.
 
-
 ## Shrinking (fast-check)
 
 ### O que é
@@ -253,6 +252,7 @@ Shrunk 12 time(s)
 ### Exemplos reais
 
 #### Exemplo 1 – array desordenado
+
 ```ts
 // propriedade falsa: qualquer array deve estar ordenado
 fc.assert(
@@ -262,14 +262,18 @@ fc.assert(
   }),
 );
 ```
+
 **Output** (exemplo típico):
+
 ```
 Counterexample: [[1,0]]
 Shrunk 7 time(s)
 ```
+
 O fast-check reduziu um array possivelmente grande até o menor `[1,0]` que ainda está desordenado.
 
 #### Exemplo 2 – string vazia
+
 ```ts
 fc.assert(
   fc.property(fc.string({ minLength: 1 }), (s) => {
@@ -277,14 +281,18 @@ fc.assert(
   }),
 );
 ```
+
 **Output**:
+
 ```
 Counterexample: "a"
 Shrunk 3 time(s)
 ```
+
 A string foi encurtada até o menor caso não‑vazio que ainda viola a expectativa.
 
 #### Exemplo 3 – número negativo
+
 ```ts
 fc.assert(
   fc.property(fc.nat({ max: 1000 }), (n) => {
@@ -292,31 +300,34 @@ fc.assert(
   }),
 );
 ```
+
 **Output**:
+
 ```
 Counterexample: 0
 Shrunk 5 time(s)
 ```
+
 O número foi reduzido ao menor valor que ainda não satisfaz `< 0`.
 
 #### Exemplo 4 – múltiplos arbitraries
+
 ```ts
 fc.assert(
-  fc.property(
-    fc.array(fc.integer(), { minLength: 2 }),
-    fc.string({ minLength: 1 }),
-    (arr, s) => {
-      const sorted = [...arr].sort((a, b) => a - b);
-      return JSON.stringify(sorted) === JSON.stringify(arr) && s === "";
-    },
-  ),
+  fc.property(fc.array(fc.integer(), { minLength: 2 }), fc.string({ minLength: 1 }), (arr, s) => {
+    const sorted = [...arr].sort((a, b) => a - b);
+    return JSON.stringify(sorted) === JSON.stringify(arr) && s === "";
+  }),
 );
 ```
+
 **Output**:
+
 ```
 Counterexample: [[1,0],"a"]
 Shrunk 9 time(s)
 ```
+
 Ambos os arbitraries foram encurtados simultaneamente.
 
 ### Boas práticas
@@ -330,4 +341,3 @@ Ambos os arbitraries foram encurtados simultaneamente.
 - Nem todos os tipos são shrinkeáveis da mesma forma; objetos complexos podem precisar de arbitraries customizados.
 - O algoritmo pode ser custoso para estruturas muito grandes – pode ser necessário limitar o tamanho máximo dos arbitraries.
 - Em algumas situações, o contraexemplo mínimo ainda pode ser grande se a propriedade envolver invariantes que só se manifestam em combinações específicas.
-
