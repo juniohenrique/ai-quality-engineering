@@ -25,7 +25,7 @@ describe("POST /auth/login – input validation", () => {
   ])("returns 400 for invalid input %p", async (input) => {
     const controller = new AuthController();
     const output = createResponse();
-    await controller.handleLogin(input as any, output.response as never);
+    await controller.handleLogin(input as unknown, output.response as never);
     expect(output.getStatusCode()).toBe(400);
     expect(JSON.parse(output.getBody())).toEqual({ error: "invalid_request", message: "Invalid request" });
   });

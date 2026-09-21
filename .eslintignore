@@ -1,0 +1,4 @@
+# Ignore generated files
+stryker-tmp/**
+dist/**
+stryker-tmp/**/*.d.ts

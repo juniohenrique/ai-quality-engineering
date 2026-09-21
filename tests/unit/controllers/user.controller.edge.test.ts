@@ -19,7 +19,7 @@ function createResponse() {
 describe("POST /users – duplicate email handling", () => {
   it("maps EMAIL_ALREADY_EXISTS error to 409", async () => {
     const controller = new UserController({
-      createUser: vi.fn().mockRejectedValue((() => { const e = new Error("dup"); (e as any).code = "EMAIL_ALREADY_EXISTS"; return e; })()),
+      createUser: vi.fn().mockRejectedValue((() => { const e = new Error("dup"); (e as unknown as { code: string }).code = "EMAIL_ALREADY_EXISTS"; return e; })()),
       deleteUser: vi.fn(),
       findUserById: vi.fn(),
       listUsers: vi.fn(),
@@ -35,7 +35,7 @@ describe("POST /users – duplicate email handling", () => {
 describe("PUT /users/:id – duplicate email handling", () => {
   it("maps EMAIL_ALREADY_EXISTS error to 409", async () => {
     const emailError = new Error("dup");
-    (emailError as any).code = "EMAIL_ALREADY_EXISTS";
+    (emailError as unknown as { code: string }).code = "EMAIL_ALREADY_EXISTS";
     const controller = new UserController({
       createUser: vi.fn(),
       deleteUser: vi.fn(),
