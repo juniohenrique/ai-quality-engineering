@@ -1,4 +1,4 @@
-# Relatório de Baseline de Mutação — AI Quality Engineering
+# Relatório de Mutação — AI Quality Engineering
 
 > Documento criado baseado na execução inicial do mutation testing com Stryker.
 > Issue de origem: **S04-03 — Mutation Analysis (Surviving Mutants)**
@@ -43,6 +43,60 @@
 | `src/index.ts` | 1 | 0 | 0,0% |
 
 > **Nota**: Os 3 arquivos com maior concentração de sobrevivência são `user.controller.ts` (26), `auth.controller.ts` (21) e `server.ts` (21) — todos contêm lógica de negócio crítica. Representam **75 de 155 (48,4%)** de todos os mutantes sobreviventes.
+
+---
+
+## Score Final (S04-05)
+
+| Métrica | Score Inicial (S04-03) | Score Consolidado (S04-05) |
+|---------|-------------------------|-----------------------------|
+| Mutation Score (killed / válidos) | **67,3%** | **67,3%** (baseline) ¹ |
+| Coverage de Linhas (`vitest run --coverage`) | **93,4%** | **93,4%** |
+| Coverage de Branches | **85,1%** | **85,1%** |
+
+> ¹ *O "score final" aqui é o **baseline fixado** antes de aplicar as recomendações de S04-04. O valor servirá como ponto de partida para o PR próximo: após implementar as ações R1.1–R3.3, o mutation score esperado sobe para **~85%**.*
+
+---
+
+## Coverage vs. Mutation Score — Comparação
+
+| Arquivo | Linha Coverage | Branch Coverage | Mutation Score | Gap | Observação |
+|---------|----------------|-----------------|----------------|-----|------------|
+| `src/services/user.service.ts` | 100% | 100% | 90,0% | 10% | Mutantes sobreviventes de defensive branches |
+| `src/controllers/health.controller.ts` | 100% | 100% | 42,9% | 57,1% | Alta cobertura, baixa qualidade de teste — mutantes de condição sobrevivem |
+| `src/utils/sort.ts` | 95% | 88% | 61,8% | 38,2% | Coverage esconde mutantes de operador lógico |
+| `src/domain/user.ts` | 97% | 92% | 90,0% | 10% | Bom alinhamento coverage × mutation |
+| `src/controllers/user.controller.ts` | 91% | 84% | 76,4% | 23,6% | Coverage não detecta mutantes de código de erro 409 |
+
+### Interpretação
+
+- **Coverage ≠ Qualidade.** Cobertura de linha/branch apenas prova que o código foi *executado* pelos testes; **mutation score** prova que os testes *falham* ao detectar mudanças sutis na lógica.
+- O `health.controller.ts` é o caso extremo: **100% de cobertura, 42,9% de mutation score** — os testes não fazem *asserts* fortes o suficiente.
+- Arquivos com mutation score **> 85%** têm cobertura e asserts alinhados; são nossos "garantidos contra regressão".
+
+---
+
+## Mutantes que Ainda Sobrevivem (e Por Quê)
+
+Resumo dos **155 mutantes sobreviventes**, agrupados por categoria de causa raiz:
+
+| Causa Raiz | # Mutantes | % | Explicação |
+|-------------|-----------|---|------------|
+| **Sem cobertura (No Coverage)** | **59** | 38% | Código nunca executado pelos testes — precisa de novos testes. |
+| **Mutantes de condição (ConditionalExpression)** | **69** | 45% | Branches verdadeiros/falsos não são exercitados ou os asserts não diferenciam. Ex.: `if (user) ... else` sobrevive porque nenhum teste envia `user = null`. |
+| **Mutantes de código de erro não testados** | **~12** | 8% | Ex.: `EMAIL_ALREADY_EXISTS` (409) e `ValidationError` não são simulados em testes. |
+| **Duplicados / imprecisos (per-test coverage)** | **7** | 5% | Stryker atribui o mesmo mutante a múltiplos testes por imprecisão no relatório per-test. Ex.: mutante #245 `isUserError`. |
+
+---
+
+## Checklist de Consolidação (S04-05)
+
+- [x] Documento consolidado em `docs/mutation-report.md`
+- [x] Score final registrado (baseline)
+- [x] Comparação coverage vs mutation incluída
+- [x] Lista de mutantes sobreviventes com causa raiz
+- [x] Recomendações priorizadas (S04-04)
+- [x] Documento linkado no `README.md`
 
 ---
 
