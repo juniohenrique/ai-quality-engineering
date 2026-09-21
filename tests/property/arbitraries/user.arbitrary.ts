@@ -12,8 +12,10 @@ import { User } from "../../../src/domain/user.js"; // caminho relativo ao diret
  * - email: endereço de email válido, já normalizado para minúsculas e sem espaços
  * - userName: string não vazia (1 a 100 caracteres)
  */
-export const arbitraryUser: fc.Arbitrary<User> = fc.record({
-  id: fc.uuid(),
-  email: fc.emailAddress().map((e) => e.trim().toLowerCase()),
-  userName: fc.string({ minLength: 1, maxLength: 100 }).filter((s) => s.trim().length > 0),
-}).map((props) => new User(props));
+export const arbitraryUser: fc.Arbitrary<User> = fc
+  .record({
+    id: fc.uuid(),
+    email: fc.emailAddress().map((e) => e.trim().toLowerCase()),
+    userName: fc.string({ minLength: 1, maxLength: 100 }).filter((s) => s.trim().length > 0),
+  })
+  .map((props) => new User(props));

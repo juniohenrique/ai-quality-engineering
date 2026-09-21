@@ -25,7 +25,7 @@ describeDatabase("PostgresUserRepository integration", () => {
   });
 
   it("persists a user across repository instances", async () => {
-        const user = new User({
+    const user = new User({
       id: randomUUID(),
       email: `integration-${randomUUID()}@example.com`,
       userName: "Ada Lovelace",
@@ -40,7 +40,7 @@ describeDatabase("PostgresUserRepository integration", () => {
 
   it("maps the unique email constraint", async () => {
     const email = `duplicate-${randomUUID()}@example.com`;
-        const firstUser = new User({ id: randomUUID(), email, userName: "Ada" });
+    const firstUser = new User({ id: randomUUID(), email, userName: "Ada" });
     const secondUser = new User({ id: randomUUID(), email, userName: "Grace" });
 
     await repository.save(firstUser);

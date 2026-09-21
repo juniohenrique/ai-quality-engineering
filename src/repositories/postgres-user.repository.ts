@@ -29,14 +29,14 @@ export class PostgresUserRepository implements UserRepository {
 
   async findAll(): Promise<User[]> {
     const result = await this.pool.query<UserRow>(
-      "SELECT id, email, user_name AS \"userName\" FROM users ORDER BY created_at, id",
+      'SELECT id, email, user_name AS "userName" FROM users ORDER BY created_at, id',
     );
     return result.rows.map(toUser);
   }
 
-    async findByEmail(email: string): Promise<User | undefined> {
+  async findByEmail(email: string): Promise<User | undefined> {
     const result = await this.pool.query<UserRow>(
-      "SELECT id, email, user_name AS \"userName\" FROM users WHERE email = $1",
+      'SELECT id, email, user_name AS "userName" FROM users WHERE email = $1',
       [email],
     );
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -44,15 +44,15 @@ export class PostgresUserRepository implements UserRepository {
 
   async findById(id: string): Promise<User | undefined> {
     const result = await this.pool.query<UserRow>(
-      "SELECT id, email, user_name AS \"userName\" FROM users WHERE id = $1",
+      'SELECT id, email, user_name AS "userName" FROM users WHERE id = $1',
       [id],
     );
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
   }
 
-    async save(user: User): Promise<void> {
+  async save(user: User): Promise<void> {
     try {
-            await this.pool.query("INSERT INTO users (id, email, user_name) VALUES ($1, $2, $3)", [
+      await this.pool.query("INSERT INTO users (id, email, user_name) VALUES ($1, $2, $3)", [
         user.id,
         user.email,
         user.userName,
@@ -84,9 +84,9 @@ export class PostgresUserRepository implements UserRepository {
 }
 
 function toUser(row: UserRow): User {
-    // The SQL queries alias `user_name` as `userName`, so the row exposes
-    // `userName` directly. Map it to the domain property here.
-    return new User({ id: row.id, email: row.email, userName: row.userName });
+  // The SQL queries alias `user_name` as `userName`, so the row exposes
+  // `userName` directly. Map it to the domain property here.
+  return new User({ id: row.id, email: row.email, userName: row.userName });
 }
 
 function mapDatabaseError(error: unknown): Error {

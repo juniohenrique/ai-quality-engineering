@@ -13,10 +13,7 @@ export class UserFactory {
   }
 
   /** Creates deterministic users with distinct IDs for batch scenarios. */
-  static createMany(
-    count: number,
-    overrides: Partial<UserProperties> = {},
-  ): User[] {
+  static createMany(count: number, overrides: Partial<UserProperties> = {}): User[] {
     if (!Number.isInteger(count) || count < 0) {
       throw new Error("User count must be a non-negative integer");
     }

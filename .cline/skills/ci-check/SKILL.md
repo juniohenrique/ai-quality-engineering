@@ -12,14 +12,14 @@ push ou PR. Evita empurrar trabalho quebrado para o GitHub Actions.
 
 ## Jobs do CI (ordem oficial)
 
-1. lint              - ESLint
-2. unit              - Vitest (testes unitarios)
-3. integration       - Vitest (testes de integracao, com DB)
-4. contract          - Pact
-5. build             - tsc / build do projeto
-6. provider-verify   - verificacao de contratos do provider
-7. coverage          - cobertura de testes
-8. quality-gate      - consolidacao dos checks acima
+1. lint - ESLint
+2. unit - Vitest (testes unitarios)
+3. integration - Vitest (testes de integracao, com DB)
+4. contract - Pact
+5. build - tsc / build do projeto
+6. provider-verify - verificacao de contratos do provider
+7. coverage - cobertura de testes
+8. quality-gate - consolidacao dos checks acima
 
 ## Passo 1: Descobrir os scripts reais do package.json
 
@@ -29,16 +29,16 @@ NUNCA invente nomes de script. Leia o package.json primeiro:
 
 Mapeie os jobs do CI para scripts:
 
-| Job CI           | Script provavel no package.json    |
-|------------------|-------------------------------------|
-| lint             | lint                                |
-| unit             | test:unit  ou  test                 |
-| integration      | test:integration                    |
-| contract         | test:contract  ou  pact             |
-| build            | build                               |
-| provider-verify  | provider:verify  ou  verify         |
-| coverage         | test:coverage  ou  coverage         |
-| quality-gate     | quality:gate  ou  gate              |
+| Job CI          | Script provavel no package.json |
+| --------------- | ------------------------------- |
+| lint            | lint                            |
+| unit            | test:unit ou test               |
+| integration     | test:integration                |
+| contract        | test:contract ou pact           |
+| build           | build                           |
+| provider-verify | provider:verify ou verify       |
+| coverage        | test:coverage ou coverage       |
+| quality-gate    | quality:gate ou gate            |
 
 Se um script nao existir, pule o job e avise o usuario.
 
@@ -110,14 +110,14 @@ Formato da proposta:
 
 Para economizar tempo, rode na ordem de "mais rapido para mais lento":
 
-1. lint              (segundos)
-2. build             (segundos)
-3. unit              (rapido)
-4. integration       (depende de DB)
-5. contract          (depende de Pact)
+1. lint (segundos)
+2. build (segundos)
+3. unit (rapido)
+4. integration (depende de DB)
+5. contract (depende de Pact)
 6. provider-verify
 7. coverage
-8. quality-gate      (consolida tudo)
+8. quality-gate (consolida tudo)
 
 Assim, se o lint falhar, voce nao perde tempo rodando integration.
 

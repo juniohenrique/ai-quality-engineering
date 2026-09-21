@@ -16,6 +16,7 @@ isolam dados. Frontend sem frameworks e sem bibliotecas CSS.
 ## 3. UI (HTML/CSS/JS)
 
 Arquitetura:
+
 - public/css/base.css — tokens, reset, componentes compartilhados
 - public/css/<pagina>.css — estilos específicos
 - Importar base.css antes do específico
@@ -125,7 +126,6 @@ falhou porque `userName` era undefined. Isso indica que:
 Correcao tipica: valide o payload na entrada do controller/service, ou
 preencha o campo com fallback no repository. Nunca altere o dominio para
 aceitar undefined — o dominio e o guardiao do invariante.
-
 
 ---
 

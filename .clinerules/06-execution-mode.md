@@ -25,13 +25,13 @@ do trabalho.
 - Se a tarefa for grande, dividir em subtarefas e executar cada uma
   ate o fim, sem parar no meio
 - Reportar no final no formato:
-  
+
       Feito.
-      
+
       Arquivos alterados:
       - caminho/arquivo1 (o que mudou)
       - caminho/arquivo2 (o que mudou)
-      
+
       Validacao:
       - comando rodado + resultado
 
@@ -45,12 +45,12 @@ Usuario pede: "Leia os ultimos 6 merges e atualize docs/test-architecture.md"
     - Merge 1 tratava de contract testing
     - Merge 2 adicionava Pact
     ...
-    
+
     Proximos passos sugeridos:
     1. Atualizar docs/test-architecture.md com definicoes
     2. Adicionar secao sobre trade-offs
     3. Criar commit
-    
+
     Quer que eu prossiga?
 
 ### CERTO
@@ -59,12 +59,12 @@ Usuario pede: "Leia os ultimos 6 merges e atualize docs/test-architecture.md"
     2. write_to_file em docs/test-architecture.md com o conteudo atualizado
     3. execute_command: npm run lint (validar)
     4. Responder:
-    
+
     Feito. Arquivos alterados:
     - docs/test-architecture.md (adicionadas secoes: definicoes,
       quando aplicar contract testing, trade-offs, exemplo real do
       pact file em tests/contract/)
-    
+
     Validacao:
     - npm run lint: passou
     - wc -l docs/test-architecture.md: 187 linhas (era 42)
@@ -104,6 +104,7 @@ Se alguma resposta for "nao", continue executando antes de responder.
 ## Excecao: pedidos explicitos de plano
 
 Se o usuario pedir EXPLICITAMENTE:
+
 - "Me de um plano"
 - "Quais sao os proximos passos?"
 - "Antes de fazer, me mostre o que vai ser feito"
