@@ -41,12 +41,10 @@ export class PaymentController {
       response.writeHead(201, { "content-type": "application/json" });
       response.end(JSON.stringify({ id: payment.id, status: payment.status }));
     } catch (error) {
-      const statusCode =
-        error instanceof Error && error.message.includes("already exists") ? 409 : 400;
       writeErrorResponse(
         response,
-        statusCode,
-        statusCode === 409 ? "duplicate_payment" : "invalid_request",
+        400,
+        "invalid_request",
         error instanceof Error ? error.message : "Invalid request",
       );
     }

@@ -40,7 +40,7 @@ describe("PaymentService", () => {
     expect(repo.create).toHaveBeenCalledWith(payment);
   });
 
-  it("rejects creation when idempotency key already exists", async () => {
+  it("returns existing payment when idempotency key already exists", async () => {
     const repo = createRepository();
     const existing = new Payment({
       id: "pay-1",
@@ -54,16 +54,70 @@ describe("PaymentService", () => {
     vi.mocked(repo.findByIdempotencyKey).mockResolvedValue(existing);
     const service = new PaymentService(repo);
 
+    const result = await service.createPayment({
+      idempotencyKey: "key-dup",
+      userId: "user-2",
+      amount: 200,
+      currency: "EUR",
+      status: "completed" as const,
+    });
+
+    expect(result).toBe(existing);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("returns existing payment when create throws a unique violation (race condition)", async () => {
+    const repo = createRepository();
+    const existing = new Payment({
+      id: "pay-1",
+      idempotencyKey: "key-race",
+      userId: "user-1",
+      amount: 100,
+      currency: "USD",
+      status: "pending",
+      createdAt: new Date(),
+    });
+
+    // Layer 1 — no existing payment found (race: both requests pass this check)
+    vi.mocked(repo.findByIdempotencyKey).mockResolvedValueOnce(undefined);
+    // Repository throws a unique-violation error (SQLSTATE 23505)
+    vi.mocked(repo.create).mockRejectedValueOnce({ code: "23505" });
+    // Layer 2 — after catching the violation, the winning request's payment exists
+    vi.mocked(repo.findByIdempotencyKey).mockResolvedValueOnce(existing);
+
+    const service = new PaymentService(repo);
+
+    const result = await service.createPayment({
+      idempotencyKey: "key-race",
+      userId: "user-2",
+      amount: 200,
+      currency: "EUR",
+      status: "completed" as const,
+    });
+
+    expect(result).toBe(existing);
+    // findByIdempotencyKey called twice: once before create, once in the catch
+    expect(repo.findByIdempotencyKey).toHaveBeenCalledTimes(2);
+    expect(repo.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-throws when create fails with a non-unique error", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.findByIdempotencyKey).mockResolvedValue(undefined);
+    const dbError = new Error("connection refused");
+    vi.mocked(repo.create).mockRejectedValue(dbError);
+
+    const service = new PaymentService(repo);
+
     await expect(
       service.createPayment({
-        idempotencyKey: "key-dup",
-        userId: "user-2",
-        amount: 200,
-        currency: "EUR",
-        status: "completed" as const,
+        idempotencyKey: "key-fail",
+        userId: "user-1",
+        amount: 100,
+        currency: "BRL",
+        status: "pending" as const,
       }),
-    ).rejects.toThrow("Payment with this idempotency key already exists");
-    expect(repo.create).not.toHaveBeenCalled();
+    ).rejects.toThrow("connection refused");
   });
 
   it("finds a payment by id via repository", async () => {
