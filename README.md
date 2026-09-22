@@ -118,6 +118,24 @@ APP_PORT=3001 DB_PORT=5433 docker compose up --build
 exposta do PostgreSQL. Internamente, a aplicacao continua usando a porta
 `3000` e o banco continua usando a porta `5432` na rede do Compose.
 
+`RABBITMQ_PORT` altera a porta exposta do AMQP (5672) e
+`RABBITMQ_MANAGEMENT_PORT` altera a porta exposta da UI de gerenciamento
+(15672). Internamente, o RabbitMQ continua usando as portas `5672` e `15672`
+na rede do Compose.
+
+### RabbitMQ
+
+O Compose tambem provisiona um RabbitMQ 3.13 com interface de gerenciamento:
+
+```bash
+docker compose up -d rabbitmq
+```
+
+A UI de gerenciamento esta disponivel em `http://localhost:15672` com as
+credenciais `guest` / `guest` (configuradas via `RABBITMQ_DEFAULT_USER` e
+`RABBITMQ_DEFAULT_PASS`). A porta AMQP para clientes de mensagens e `5672`.
+O healthcheck usa `rabbitmq-diagnostics ping`.
+
 ## Arquitetura
 
 O projeto separa responsabilidades por camada:
