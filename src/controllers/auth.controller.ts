@@ -33,6 +33,6 @@ function isLoginInput(input: unknown): input is LoginInput {
     typeof candidate.email === "string" &&
     typeof candidate.password === "string" &&
     candidate.email.trim().length > 0 &&
-    candidate.password.length > 0
+    candidate.password.trim().length > 0
   );
 }
