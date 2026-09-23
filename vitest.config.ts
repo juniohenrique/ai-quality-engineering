@@ -8,7 +8,10 @@ export default defineConfig({
       provider: "v8",
       all: true,
       include: ["src/**/*.ts"],
-      exclude: ["src/**/*.test.ts"],
+            exclude: [
+        "src/**/*.test.ts",
+        "src/queue/consumer.ts", // integration-only: testado no job `integration` (broker RabbitMQ real)
+      ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "./coverage",
       thresholds: {
