@@ -9,6 +9,8 @@ export interface ConsumerConfig {
   delayMs?: number;
   prefetch?: number;
   logger?: ConsumerLogger;
+  maxRetries?: number;
+  retryBaseDelayMs?: number;
 }
 
 /**
@@ -31,6 +33,9 @@ const DEFAULT_QUEUE = "payments";
 const DEFAULT_ATTEMPTS = 5;
 const DEFAULT_DELAY_MS = 1000;
 const DEFAULT_PREFETCH = 10;
+const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_RETRY_BASE_DELAY_MS = 1000;
+const RETRY_COUNT_HEADER = "x-retry-count";
 
 function logLine(level: LogLevel, message: string, context?: Record<string, unknown>): void {
   const entry = {
@@ -60,9 +65,12 @@ const consoleLogger: ConsumerLogger = {
  * RabbitMQ consumer that drains the `payments` queue.
  *
  * Every delivered message is parsed as a {@link CreatePaymentDTO} and handed to
- * {@link PaymentService.createPayment}. On success the message is ACKed and on
- * any failure it is NACKed (without requeue, so it is dropped — retry and DLQ
- * are intentionally out of scope here, see issues S05-05 / S05-06).
+ * {@link PaymentService.createPayment}. On success the message is ACKed. On
+ * failure the message is retried with exponential backoff (1 s, 2 s, 4 s) by
+ * re-publishing it to the same queue with an incremented `x-retry-count`
+ * header. After `maxRetries` attempts (configurable via `QUEUE_MAX_RETRIES`,
+ * default 3) the message is NACKed without requeue so it can be routed to a
+ * DLQ (see issue S05-06).
  *
  * The connection and channel are established lazily with retry and are
  * re-established automatically whenever the broker (or the channel) drops the
@@ -77,6 +85,8 @@ export class RabbitMqConsumer {
   private readonly delayMs: number;
   private readonly prefetch: number;
   private readonly logger: ConsumerLogger;
+  private readonly maxRetries: number;
+  private readonly retryBaseDelayMs: number;
   private consumerTag: string | null = null;
   private closed = false;
   private connectionPromise: Promise<void> | null = null;
@@ -92,6 +102,9 @@ export class RabbitMqConsumer {
     this.delayMs = config.delayMs ?? DEFAULT_DELAY_MS;
     this.prefetch = config.prefetch ?? DEFAULT_PREFETCH;
     this.logger = config.logger ?? consoleLogger;
+    this.maxRetries =
+      config.maxRetries ?? (Number(process.env.QUEUE_MAX_RETRIES) || DEFAULT_MAX_RETRIES);
+    this.retryBaseDelayMs = config.retryBaseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS;
   }
 
   /** True when both the connection and the channel are available. */
@@ -250,6 +263,7 @@ export class RabbitMqConsumer {
       return;
     }
     const correlationId = this.resolveCorrelationId(msg);
+    const retryCount = this.resolveRetryCount(msg);
 
     try {
       const payload = this.parsePayload(msg);
@@ -263,12 +277,44 @@ export class RabbitMqConsumer {
       });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      channel.nack(msg, false, false);
-      this.logger.error("Failed to process payment", {
-        correlationId,
-        queue: this.queue,
-        error: reason,
-      });
+      const nextRetryCount = retryCount + 1;
+
+      if (retryCount < this.maxRetries) {
+        const backoffMs = this.retryBaseDelayMs * 2 ** retryCount;
+        this.logger.warn("Payment processing failed, scheduling retry", {
+          correlationId,
+          queue: this.queue,
+          error: reason,
+          retryCount: nextRetryCount,
+          maxRetries: this.maxRetries,
+          backoffMs,
+        });
+
+        await this.wait(backoffMs);
+
+        // Re-publish the message with an incremented retry count so the
+        // consumer picks it up on the next available turn. The original
+        // message is ACKed first to avoid double-delivery.
+        const originalHeaders = msg.properties.headers ?? {};
+        const headers = { ...originalHeaders, [RETRY_COUNT_HEADER]: nextRetryCount };
+        channel.sendToQueue(this.queue, msg.content, {
+          correlationId,
+          headers,
+          contentType: "application/json",
+        });
+        channel.ack(msg);
+      } else {
+        // Max retries exhausted - NACK without requeue. S05-06 implements
+        // the actual DLQ routing; here we only prepare the dead-letter path.
+        channel.nack(msg, false, false);
+        this.logger.error("Payment processing failed after max retries, routing to DLQ", {
+          correlationId,
+          queue: this.queue,
+          error: reason,
+          retryCount,
+          maxRetries: this.maxRetries,
+        });
+      }
     }
   }
 
@@ -289,6 +335,31 @@ export class RabbitMqConsumer {
       return headerCorrelationId;
     }
     return `delivery-${msg.fields.deliveryTag}`;
+  }
+
+  /**
+   * Reads the current retry count from the `x-retry-count` message header.
+   *
+   * Returns `0` for the initial delivery (no retry header present) so the
+   * backoff formula `baseDelay × 2^retryCount` yields the expected
+   * 1 s, 2 s, 4 s sequence.
+   */
+  private resolveRetryCount(msg: ConsumeMessage): number {
+    const headers = msg.properties.headers;
+    if (!headers) {
+      return 0;
+    }
+    const value = headers[RETRY_COUNT_HEADER];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isNaN(parsed)) {
+        return parsed;
+      }
+    }
+    return 0;
   }
 
   private parsePayload(msg: ConsumeMessage): CreatePaymentDTO {
