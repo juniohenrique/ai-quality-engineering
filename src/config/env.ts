@@ -3,7 +3,7 @@ import "dotenv/config";
 export interface AppEnv {
   port: number;
   databaseUrl: string;
-  rabbitmqUrl?: string;
+  rabbitmqUrl?:  string | undefined;
 }
 
 export function loadEnv(source: Record<string, string | undefined> = process.env): AppEnv {
