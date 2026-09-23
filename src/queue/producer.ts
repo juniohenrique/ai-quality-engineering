@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import * as crypto from "node:crypto";
 import { connect, type Channel, type ChannelModel, type Options } from "amqplib";
 import { assertDeadLetteredQueue } from "./setup.js";
 
@@ -35,8 +35,9 @@ const DEFAULT_CONTENT_TYPE = "application/json";
  *
  * The connection is established lazily with retry and is re-established
  * automatically when the broker drops the connection. Headers always carry
- * a `correlationId`, which is generated (via `randomUUID`) when the caller
- * does not supply one.
+ * an `x-correlation-id`, which is generated (via `crypto.randomUUID`) when
+ * the caller does not supply one. The used correlation id is returned to
+ * the caller so it can be included in application-level logs.
  */
 export class RabbitMqProducer {
   private connection: ChannelModel | null = null;
@@ -129,11 +130,17 @@ export class RabbitMqProducer {
    * Publishes a JSON payload to `queue`.
    *
    * The payload is serialized to JSON and sent through `sendToQueue` after
-   * asserting the queue exists. A `correlationId` is always present in the
-   * message headers (generated when absent) and is also exposed as a
+   * asserting the queue exists. An `x-correlation-id` header is always present
+   * (generated via `crypto.randomUUID()` when absent) and is also exposed as a
    * top-level message property for idiomatic request/reply correlation.
+   *
+   * @returns The correlation id that was used for the published message.
    */
-  async publish(queue: string, payload: unknown, options?: PublishOptions): Promise<void> {
+  async publish(
+    queue: string,
+    payload: unknown,
+    options?: PublishOptions,
+  ): Promise<string> {
     if (!this.isConnected) {
       await this.connect();
     }
@@ -149,27 +156,29 @@ export class RabbitMqProducer {
     const publishOptions = this.buildPublishOptions(options, correlationId, headers);
 
     // Use the shared DLQ-aware queue assertion so the queue is created with
-    // the dead-letter exchange arguments that match the consumer’s declaration.
+    // the dead-letter exchange arguments that match the consumer's declaration.
     await assertDeadLetteredQueue(channel, queue);
     channel.sendToQueue(queue, content, publishOptions);
+
+    return correlationId;
   }
 
   private resolveCorrelationId(options: PublishOptions | undefined): string {
     if (options?.correlationId) {
       return options.correlationId;
     }
-    const headerCorrelationId = options?.headers?.correlationId;
+    const headerCorrelationId = options?.headers?.["x-correlation-id"];
     if (typeof headerCorrelationId === "string") {
       return headerCorrelationId;
     }
-    return randomUUID();
+    return crypto.randomUUID();
   }
 
   private buildHeaders(
     options: PublishOptions | undefined,
     correlationId: string,
   ): Record<string, unknown> {
-    return { ...(options?.headers ?? {}), correlationId };
+    return { ...(options?.headers ?? {}), "x-correlation-id": correlationId };
   }
 
   private buildPublishOptions(
