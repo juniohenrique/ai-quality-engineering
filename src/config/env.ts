@@ -3,6 +3,7 @@ import "dotenv/config";
 export interface AppEnv {
   port: number;
   databaseUrl: string;
+  rabbitmqUrl?:  string | undefined;
 }
 
 export function loadEnv(source: Record<string, string | undefined> = process.env): AppEnv {
@@ -18,5 +19,5 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
     throw new Error("PORT must be a valid TCP port");
   }
 
-  return { port, databaseUrl };
+  return { port, databaseUrl, rabbitmqUrl: source.RABBITMQ_URL };
 }
