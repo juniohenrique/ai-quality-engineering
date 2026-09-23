@@ -4,6 +4,16 @@ import type { CreatePaymentDTO } from "../dto/create-payment.dto.js";
 import type { PaymentRepository } from "../repositories/payment.repository.js";
 import { isUniqueViolation } from "../utils/postgres-errors.js";
 
+/**
+ * Optional, request-scoped context propagated from the queue consumer so the
+ * service layer (and any future logging/tracing hooks) can correlate work back
+ * to a specific message.  The `correlationId` mirrors the `x-correlation-id`
+ * header set by the producer.
+ */
+export interface PaymentContext {
+  correlationId?: string;
+}
+
 export class PaymentService {
   constructor(private readonly repository: PaymentRepository) {}
 
@@ -28,12 +38,19 @@ export class PaymentService {
    * re-thrown so it is not silently swallowed.
    *
    * @param input - The payment creation data transfer object.
+   * @param context - Optional request-scoped context (e.g. `correlationId`)
+   *   used to propagate tracing information from the queue consumer.  This is
+   *   passed through to downstream calls without changing the persistence logic.
    * @returns The persisted payment (either newly created or a pre-existing
    *   one with the same idempotency key).
    * @throws {Error} When the input is invalid and the {@link Payment}
    *   constructor rejects it, or when an unexpected database error occurs.
    */
-  async createPayment(input: CreatePaymentDTO): Promise<Payment> {
+  async createPayment(
+    input: CreatePaymentDTO,
+    context?: PaymentContext,
+  ): Promise<Payment> {
+    void context;
     const idempotencyKey = input.idempotencyKey.trim();
     const userId = input.userId.trim();
     const amount = input.amount;

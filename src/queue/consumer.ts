@@ -60,6 +60,7 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_BASE_DELAY_MS = 1000;
 const DEFAULT_PROCESSING_TIMEOUT_MS = 5000;
 const RETRY_COUNT_HEADER = "x-retry-count";
+const CORRELATION_ID_HEADER = "x-correlation-id";
 
 /**
  * Lançado quando o processamento de uma mensagem excede o limite
@@ -339,7 +340,7 @@ export class RabbitMqConsumer {
     try {
       const payload = this.parsePayload(msg);
       const payment = await this.withProcessingTimeout(() =>
-        this.paymentService.createPayment(payload),
+        this.paymentService.createPayment(payload, { correlationId }),
       );
       channel.ack(msg);
       this.logger.info("Payment processed", {
@@ -392,18 +393,20 @@ export class RabbitMqConsumer {
   }
 
   /**
-   * Resolves the correlation id carried by the message.
+   * Resolves the correlation id for a message, used to propagate tracing
+   * context to the `PaymentService` and structured logs.
    *
-   * The producer always emits a `correlationId` (both as a top-level property
-   * and inside `headers`). We read the top-level property first, then fall back
-   * to the header, then to the delivery tag so logs are always traceable.
+   * The producer always emits a `correlationId` (both as a top-level message
+   * property and inside the `x-correlation-id` header). We read the top-level
+   * property first, then fall back to the header, then to the delivery tag so
+   * logs are always traceable.
    */
   private resolveCorrelationId(msg: ConsumeMessage): string {
     const correlationId = msg.properties.correlationId;
     if (typeof correlationId === "string") {
       return correlationId;
     }
-    const headerCorrelationId = msg.properties.headers?.correlationId;
+    const headerCorrelationId = msg.properties.headers?.[CORRELATION_ID_HEADER];
     if (typeof headerCorrelationId === "string") {
       return headerCorrelationId;
     }

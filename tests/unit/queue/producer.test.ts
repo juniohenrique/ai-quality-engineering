@@ -57,7 +57,7 @@ describe("RabbitMqProducer", () => {
       const options = callArgs[2];
       expect(options.contentType).toBe("application/json");
       expect(options.correlationId).toBeDefined();
-      expect(options.headers).toHaveProperty("correlationId", options.correlationId);
+      expect(options.headers).toHaveProperty("x-correlation-id", options.correlationId);
     });
 
     it("usa correlationId fornecido via options", async () => {
@@ -68,7 +68,7 @@ describe("RabbitMqProducer", () => {
     });
 
     it("usa correlationId de headers quando correlationId ausente", async () => {
-      await producer.publish("test_queue", {}, { headers: { correlationId: "header-id" } });
+      await producer.publish("test_queue", {}, { headers: { "x-correlation-id": "header-id" } });
       const callArgs = mockChannel.sendToQueue.mock.calls[0];
       const options = callArgs[2];
       expect(options.correlationId).toBe("header-id");

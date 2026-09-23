@@ -191,6 +191,59 @@ deixando a mensagem em voo sem ser ACKada. Isso pode ser causado por:
 
 ---
 
+## 6. Correlation ID (tracing entre producer e consumer)
+
+### Sintoma
+
+Em um sistema distribuído, uma única operação de pagamento pode tocar várias
+camadas — producer, broker RabbitMQ, consumer, service, repositório — e cada
+uma delas emite logs em serviços distintos. Sem um identificador compartilhado,
+é impossível reconstruir a jornada de uma mensagem a partir de seus logs.
+
+### Comportamento do pipeline
+
+1. **Producer** (`src/queue/producer.ts`): sempre gera ou reutiliza um
+   `correlationId` (via `crypto.randomUUID()` quando o caller não fornece um),
+   o envia tanto como propriedade AMQP `correlationId` quanto como header
+   `x-correlation-id`, e **retorna** o valor para o caller — que pode incluí-lo
+   nos seus próprios logs.
+
+2. **Consumer** (`src/queue/consumer.ts`): no `processMessage`, lê o
+   `correlationId` de `msg.properties.correlationId`, com fallback para o
+   header `x-correlation-id`, e com último recurso usa `delivery-{tag}`. O
+   valor é passado para `PaymentService.createPayment` via `PaymentContext` e
+   incluído em **todos** os logs estruturados do consumer (info, warn, error).
+
+3. **Retry**: quando o consumer re-publica a mensagem (backoff exponencial), o
+   `correlationId` é preservado nas propriedades da nova mensagem — todas as
+   tentativas compartilham o mesmo identificador.
+
+4. **DLQ**: a mensagem que esgota as tentativas mantém o `correlationId`
+   original, permitindo correlacionar o alerta de DLQ com a tentativa inicial.
+
+### Configuração relevante
+
+| Propriedade           | Env var          | Default                          | Descrição                                      |
+|-----------------------|------------------|----------------------------------|------------------------------------------------|
+| _(nenhuma)_           | —                | —                                | O correlation id é sempre propagado automaticamente. |
+
+### Testes de validação
+
+- `tests/integration/queue/correlation.test.ts` — verifica três cenários:
+  - O `correlationId` fornecido pelo producer chega ao `PaymentService` e
+    aparece nos logs do consumer.
+  - Quando o producer não fornece um, `crypto.randomUUID()` gera um UUID v4
+    válido que também é propagado.
+  - O `correlationId` é preservado entre a tentativa que falha (retry) e a
+    tentativa bem-sucedida.
+
+> **Nota:** o `PaymentService` aceita `PaymentContext` (interface com
+> `correlationId?: string`) como segundo parâmetro de `createPayment`. Ainda
+> não possui logger próprio — o contexto está disponível para futuras
+> integrações com OpenTelemetry ou sistemas de tracing distribuído.
+
+---
+
 ## Recovery checklist
 
 | Cenário                                    | Recovery automático? | Teste de validação                  |
@@ -213,4 +266,10 @@ deixando a mensagem em voo sem ser ACKada. Isso pode ser causado por:
 - **ACK** — confirmação de entrega: o broker descarta a mensagem.
 - **NACK** — rejeição sem requeue: a mensagem é roteada para a DLX.
 - **`x-retry-count`** — header incrementado pelo consumer a cada retry.
+- **`x-correlation-id`** — header (também exposta como propriedade AMQP
+  `correlationId`) que identifica unicamente uma mensagem em toda a cadeia
+  producer → broker → consumer → service. Gerado pelo producer via
+  `crypto.randomUUID()` quando não fornecido pelo caller.
+- **`PaymentContext`** — objeto opcional passado ao `PaymentService.createPayment`
+  com o `correlationId`, permitindo tracing nos logs da camada de serviço.
 - **`durable`** — flag AMQP que persiste a fila/mensagem no disco.
