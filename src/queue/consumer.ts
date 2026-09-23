@@ -23,6 +23,15 @@ export interface ConsumerConfig {
   dlqName?: string;
   /** Quando `true`, também consome da DLQ para log/alerta (default: `false`). */
   consumeDlq?: boolean;
+  /**
+   * Timeout máximo (em ms) para o processamento de uma única mensagem.
+   *
+   * Env var equivalente: `QUEUE_PROCESSING_TIMEOUT_MS` (default 5000).
+   * Se o `PaymentService.createPayment` não completar dentro desse limite,
+   * a mensagem é tratada como falha de processamento — acionando o ciclo de
+   * retry (backoff exponencial) e, ao esgotar tentativas, a DLQ.
+   */
+  processingTimeoutMs?: number;
 }
 
 // Re-export DLQ constants para uso em testes e consumer opcional da DLQ.
@@ -49,7 +58,23 @@ const DEFAULT_DELAY_MS = 1000;
 const DEFAULT_PREFETCH = 10;
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_BASE_DELAY_MS = 1000;
+const DEFAULT_PROCESSING_TIMEOUT_MS = 5000;
 const RETRY_COUNT_HEADER = "x-retry-count";
+
+/**
+ * Lançado quando o processamento de uma mensagem excede o limite
+ * configurado por `QUEUE_PROCESSING_TIMEOUT_MS`.
+ *
+ * O timeout é tratado como uma falha de processamento — a mensagem entra
+ * no ciclo normal de retry (backoff exponencial) e, ao esgotar tentativas,
+ * é roteada para a DLQ.
+ */
+export class ProcessingTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Payment processing exceeded timeout of ${timeoutMs}ms`);
+    this.name = "ProcessingTimeoutError";
+  }
+}
 
 function logLine(level: LogLevel, message: string, context?: Record<string, unknown>): void {
   const entry = {
@@ -101,6 +126,7 @@ export class RabbitMqConsumer {
   private readonly logger: ConsumerLogger;
   private readonly maxRetries: number;
   private readonly retryBaseDelayMs: number;
+  private readonly processingTimeoutMs: number;
     private readonly dlxName: string;
   private readonly dlqName: string;
   private readonly consumeDlq: boolean;
@@ -123,6 +149,9 @@ export class RabbitMqConsumer {
         this.maxRetries =
       config.maxRetries ?? (Number(process.env.QUEUE_MAX_RETRIES) || DEFAULT_MAX_RETRIES);
     this.retryBaseDelayMs = config.retryBaseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS;
+    this.processingTimeoutMs =
+      config.processingTimeoutMs ??
+      (Number(process.env.QUEUE_PROCESSING_TIMEOUT_MS) || DEFAULT_PROCESSING_TIMEOUT_MS);
     this.dlxName = config.dlxName ?? DLX_NAME;
     this.dlqName = config.dlqName ?? DLQ_NAME;
     this.consumeDlq = config.consumeDlq ?? false;
@@ -309,7 +338,9 @@ export class RabbitMqConsumer {
 
     try {
       const payload = this.parsePayload(msg);
-      const payment = await this.paymentService.createPayment(payload);
+      const payment = await this.withProcessingTimeout(() =>
+        this.paymentService.createPayment(payload),
+      );
       channel.ack(msg);
       this.logger.info("Payment processed", {
         correlationId,
@@ -513,6 +544,34 @@ export class RabbitMqConsumer {
       channel.ack(msg);
     }
   };
+
+  /**
+   * Executa `work` com um limite de tempo.
+   *
+   * Usa `Promise.race` entre a operação e um `setTimeout` que rejea com
+   * {@link ProcessingTimeoutError}. O timer é sempre limpo (mesmo em caso de
+   * sucesso) para evitar leaks de event-loop. Qualquer rejeição — seja do
+   * timeout ou da própria operação — propaga para o `catch` em
+   * `processMessage`, acionando o ciclo de retry/DLQ.
+   */
+  private async withProcessingTimeout<T>(work: () => Promise<T>): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        work(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new ProcessingTimeoutError(this.processingTimeoutMs)),
+            this.processingTimeoutMs,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
+  }
 
   private wait(delayMs: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, delayMs));

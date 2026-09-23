@@ -150,6 +150,47 @@ A mensagem publicada não é um JSON válido ou não contém os campos esperados
 
 ---
 
+## 5. Timeout no processamento (processing timeout)
+
+### Sintoma
+
+O `PaymentService.createPayment` leva mais tempo do que o limite configurado,
+deixando a mensagem em voo sem ser ACKada. Isso pode ser causado por:
+
+- Latência no banco de dados (lock, I/O lento).
+- Chamada a serviço externo sem timeout (ex.: gateway de pagamento).
+- Carga excessiva no consumer.
+
+### Comportamento do consumer
+
+1. O consumer envolve a chamada `paymentService.createPayment` em
+   `Promise.race` contra um timer de `processingTimeoutMs` (via método privado
+   `withProcessingTimeout`).
+2. Se o timer vence primeiro, um `ProcessingTimeoutError` é lançado — o timer
+   é limpo no `finally` para evitar *leaks* de event-loop.
+3. O `ProcessingTimeoutError` é capturado pelo mesmo bloco `catch` de falha de
+   processamento: a mensagem entra no ciclo normal de **retry com backoff
+   exponencial** e, ao esgotar `maxRetries`, é **NACKed sem requeue** →
+   roteada para a DLQ (`payments-dlq`) via DLX.
+4. O motivo do timeout ("exceeded timeout of Nms") é incluído no campo `error`
+   do log estruturado, facilitando correlação em logs.
+
+### Configuração relevante
+
+| Propriedade            | Env var                      | Default | Descrição                                            |
+|------------------------|------------------------------|---------|------------------------------------------------------|
+| `processingTimeoutMs`  | `QUEUE_PROCESSING_TIMEOUT_MS`| 5000    | Timeout por mensagem em milissegundos.               |
+
+### Testes de validação
+
+- `tests/integration/queue/timeout.test.ts` — simula processamento lento (2s)
+  com timeout de 500ms. Verifica que: (a) o service é chamado `maxRetries + 1`
+  vezes, (b) cada tentativa registra timeout no log, (c) a mensagem chega à
+  DLQ com o payload preservado, (d) nenhum pagamento é persistido, e (e) o
+  consumer permanece ativo.
+
+---
+
 ## Recovery checklist
 
 | Cenário                                    | Recovery automático? | Teste de validação                  |
@@ -158,6 +199,7 @@ A mensagem publicada não é um JSON válido ou não contém os campos esperados
 | Falha permanente (DLQ)                    | Não — exige intervenção manual | `dlq.test.ts`              |
 | Conexão com broker perdida                | Sim (reconnect loop) | `consumer.ts#reconnectWithRetry`    |
 | Processo consumer reiniciado (offline)    | Sim (fila durable)   | `consumer-failure.test.ts`           |
+| Timeout no processamento (> 5s)            | Sim (retry + DLQ)    | `timeout.test.ts`                   |
 | Payload inválido (JSON corrompido)        | Não — vai para DLQ   | `consumer.test.ts` (NACK path)      |
 
 ---
