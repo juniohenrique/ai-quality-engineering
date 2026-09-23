@@ -1,6 +1,12 @@
-import { connect, type Channel, type ChannelModel, type ConsumeMessage } from "amqplib";
+import {
+  connect,
+  type Channel,
+  type ChannelModel,
+  type ConsumeMessage,
+} from "amqplib";
 import type { CreatePaymentDTO } from "../dto/create-payment.dto.js";
 import type { PaymentService } from "../services/payment.service.js";
+import { DEFAULT_QUEUE, DLQ_NAME, DLX_NAME, assertDeadLetteredQueue } from "./setup.js";
 
 export interface ConsumerConfig {
   url?: string;
@@ -11,7 +17,16 @@ export interface ConsumerConfig {
   logger?: ConsumerLogger;
   maxRetries?: number;
   retryBaseDelayMs?: number;
+  /** Nome da exchange de dead-letter (default: `payments-dlx`). */
+  dlxName?: string;
+  /** Nome da DLQ (default: `payments-dlq`). */
+  dlqName?: string;
+  /** Quando `true`, também consome da DLQ para log/alerta (default: `false`). */
+  consumeDlq?: boolean;
 }
+
+// Re-export DLQ constants para uso em testes e consumer opcional da DLQ.
+export { DLX_NAME, DLQ_NAME, DEFAULT_QUEUE };
 
 /**
  * Minimal contract for a structured logger.
@@ -29,7 +44,6 @@ export interface ConsumerLogger {
 
 export type LogLevel = "info" | "warn" | "error";
 
-const DEFAULT_QUEUE = "payments";
 const DEFAULT_ATTEMPTS = 5;
 const DEFAULT_DELAY_MS = 1000;
 const DEFAULT_PREFETCH = 10;
@@ -87,6 +101,10 @@ export class RabbitMqConsumer {
   private readonly logger: ConsumerLogger;
   private readonly maxRetries: number;
   private readonly retryBaseDelayMs: number;
+    private readonly dlxName: string;
+  private readonly dlqName: string;
+  private readonly consumeDlq: boolean;
+  private dlqConsumerTag: string | null = null;
   private consumerTag: string | null = null;
   private closed = false;
   private connectionPromise: Promise<void> | null = null;
@@ -102,9 +120,12 @@ export class RabbitMqConsumer {
     this.delayMs = config.delayMs ?? DEFAULT_DELAY_MS;
     this.prefetch = config.prefetch ?? DEFAULT_PREFETCH;
     this.logger = config.logger ?? consoleLogger;
-    this.maxRetries =
+        this.maxRetries =
       config.maxRetries ?? (Number(process.env.QUEUE_MAX_RETRIES) || DEFAULT_MAX_RETRIES);
     this.retryBaseDelayMs = config.retryBaseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS;
+    this.dlxName = config.dlxName ?? DLX_NAME;
+    this.dlqName = config.dlqName ?? DLQ_NAME;
+    this.consumeDlq = config.consumeDlq ?? false;
   }
 
   /** True when both the connection and the channel are available. */
@@ -191,6 +212,16 @@ export class RabbitMqConsumer {
     }
     await this.connect();
     await this.startConsuming();
+
+    if (this.consumeDlq) {
+      await this.startDlqConsumer().catch((error) => {
+        const reason = error instanceof Error ? error.message : String(error);
+        this.logger.warn("Failed to start DLQ consumer, continuing without it", {
+          queue: this.dlqName,
+          error: reason,
+        });
+      });
+    }
   }
 
   private async startConsuming(): Promise<void> {
@@ -202,7 +233,7 @@ export class RabbitMqConsumer {
       throw new Error("No channel available to consume messages");
     }
 
-    const assertReply = await channel.assertQueue(this.queue, { durable: true });
+    const assertReply = await assertDeadLetteredQueue(channel, this.queue, this.dlxName, this.dlqName);
     await channel.prefetch(this.prefetch);
     const reply = await channel.consume(this.queue, this.handleMessage, { noAck: false });
     this.consumerTag = reply.consumerTag;
@@ -217,6 +248,7 @@ export class RabbitMqConsumer {
     this.connection = null;
     this.channel = null;
     this.consumerTag = null;
+    this.dlqConsumerTag = null;
     if (this.closed || this.connectionPromise !== null) {
       return;
     }
@@ -234,6 +266,16 @@ export class RabbitMqConsumer {
         await this.connectOnce();
         await this.startConsuming();
         this.logger.info("Consumer reconnected", { queue: this.queue });
+
+        if (this.dlqConsumerTag === null && this.consumeDlq) {
+          await this.startDlqConsumer().catch((error) => {
+            const reason = error instanceof Error ? error.message : String(error);
+            this.logger.warn("Failed to re-start DLQ consumer after reconnection", {
+              queue: this.dlqName,
+              error: reason,
+            });
+          });
+        }
         return;
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
@@ -304,8 +346,8 @@ export class RabbitMqConsumer {
         });
         channel.ack(msg);
       } else {
-        // Max retries exhausted - NACK without requeue. S05-06 implements
-        // the actual DLQ routing; here we only prepare the dead-letter path.
+        // Max retries exhausted — NACK without requeue so the message is
+        // dead-lettered to `payments-dlq` via the DLX configured on the queue.
         channel.nack(msg, false, false);
         this.logger.error("Payment processing failed after max retries, routing to DLQ", {
           correlationId,
@@ -392,13 +434,20 @@ export class RabbitMqConsumer {
     const channel = this.channel;
     const connection = this.connection;
     const consumerTag = this.consumerTag;
+    const dlqConsumerTag = this.dlqConsumerTag;
 
     this.channel = null;
     this.connection = null;
     this.consumerTag = null;
+    this.dlqConsumerTag = null;
 
-    if (channel && consumerTag) {
-      await channel.cancel(consumerTag).catch(() => undefined);
+    if (channel) {
+      if (consumerTag) {
+        await channel.cancel(consumerTag).catch(() => undefined);
+      }
+      if (dlqConsumerTag) {
+        await channel.cancel(dlqConsumerTag).catch(() => undefined);
+      }
       await channel.close().catch(() => undefined);
     }
     if (connection) {
@@ -410,6 +459,60 @@ export class RabbitMqConsumer {
       await this.connectionPromise.catch(() => undefined);
     }
   }
+
+  /**
+   * Starts an optional consumer on the Dead Letter Queue (DLQ).
+   *
+   * When `consumeDlq` is enabled in the config, the DLQ consumer logs every
+   * message that arrives in `payments-dlq` (including the `x-death` header
+   * that RabbitMQ attaches automatically) and ACKs it. This is useful for
+   * monitoring and alerting on messages that exhausted all retries.
+   *
+   * The DLQ consumer is **not** started automatically — call this method
+   * explicitly, or set `consumeDlq: true` in the {@link ConsumerConfig}.
+   */
+  private async startDlqConsumer(): Promise<void> {
+    const channel = this.channel;
+    if (!channel) {
+      throw new Error("No channel available to consume DLQ messages");
+    }
+
+    await channel.assertQueue(this.dlqName, { durable: true });
+    const reply = await channel.consume(
+      this.dlqName,
+      this.handleDlqMessage,
+      { noAck: false },
+    );
+    this.dlqConsumerTag = reply.consumerTag;
+    this.logger.info("DLQ consumer started", {
+      queue: this.dlqName,
+      consumerTag: reply.consumerTag,
+    });
+  }
+
+  private readonly handleDlqMessage = (msg: ConsumeMessage | null): void => {
+    if (!msg) {
+      return;
+    }
+    const channel = this.channel;
+    const correlationId = this.resolveCorrelationId(msg);
+    const deathHeader = msg.properties.headers?.["x-death"] as
+      | { reason: string; count: number; queue: string }[]
+      | undefined;
+
+    this.logger.warn("Message landed in DLQ after exhausting retries", {
+      queue: this.dlqName,
+      correlationId,
+      originalQueue: deathHeader?.[0]?.queue,
+      deadLetterReason: deathHeader?.[0]?.reason,
+      deliveryCount: deathHeader?.[0]?.count,
+      payload: JSON.parse(msg.content.toString()),
+    });
+
+    if (channel) {
+      channel.ack(msg);
+    }
+  };
 
   private wait(delayMs: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, delayMs));

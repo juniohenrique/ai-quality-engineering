@@ -5,6 +5,7 @@ import { closeDatabase, resetDatabase, testDatabase } from "../../setup/db.js";
 import { PostgresPaymentRepository } from "../../../src/repositories/postgres-payment.repository.js";
 import { PaymentService } from "../../../src/services/payment.service.js";
 import { RabbitMqConsumer } from "../../../src/queue/consumer.js";
+import { assertDeadLetteredQueue } from "../../../src/queue/setup.js";
 import type { CreatePaymentDTO } from "../../../src/dto/create-payment.dto.js";
 import type { Payment } from "../../../src/domain/payment.js";
 
@@ -31,14 +32,14 @@ async function withChannel<T>(operation: (channel: Channel) => Promise<T>): Prom
 
 async function purgeQueue(): Promise<void> {
   await withChannel(async (channel) => {
-    await channel.assertQueue(QUEUE, { durable: true });
+    await assertDeadLetteredQueue(channel, QUEUE);
     await channel.purgeQueue(QUEUE);
   });
 }
 
 async function publishMessage(payload: CreatePaymentDTO, correlationId: string): Promise<void> {
   await withChannel(async (channel) => {
-    await channel.assertQueue(QUEUE, { durable: true });
+    await assertDeadLetteredQueue(channel, QUEUE);
     channel.sendToQueue(QUEUE, Buffer.from(JSON.stringify(payload)), {
       correlationId,
       contentType: "application/json",
