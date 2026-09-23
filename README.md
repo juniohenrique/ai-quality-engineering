@@ -136,6 +136,54 @@ credenciais `guest` / `guest` (configuradas via `RABBITMQ_DEFAULT_USER` e
 `RABBITMQ_DEFAULT_PASS`). A porta AMQP para clientes de mensagens e `5672`.
 O healthcheck usa `rabbitmq-diagnostics ping`.
 
+#### Dead Letter Queue (DLQ)
+
+O projeto implementa o padrão **Dead Letter Queue** para a fila `payments`,
+garantindo que mensagens que excedem o limite de tentativas sejam rotas para
+uma DLQ para posterior inspeção ou reprocessamento manual.
+
+**Topologia criada pelo consumer:**
+
+| Componente            | Tipo       | Nome                       | Argumentos                                           |
+| --------------------- | ---------- | -------------------------- | ---------------------------------------------------- |
+| Fila principal        | queue      | `payments`                 | `durable:true`, `x-dead-letter-exchange:payments-dlx`, `x-dead-letter-routing-key:payments-dlq` |
+| Dead-letter exchange  | exchange   | `payments-dlx`             | `direct`, `durable:true`                             |
+| Dead Letter Queue     | queue      | `payments-dlq`             | `durable:true`                                       |
+| Binding               | binding    | `payments-dlq`→`payments-dlx` | routing key `payments-dlq`                        |
+
+**Fluxo:**
+
+1. O consumer publica a mensagem na fila `payments` (via producer ou diretamente).
+2. Em caso de falha, o consumer re-publica com header `x-retry-count` incrementado
+   e delay exponencial (`retryBaseDelayMs × 2^retryCount`).
+3. Após `QUEUE_MAX_RETRIES` tentativas (default **3**), o consumer faz `NACK(msg, false, false)`.
+4. O RabbitMQ, devido ao argumento `x-dead-letter-exchange`, encaminha a mensagem
+   para o exchange `payments-dlx`, que a roteia para `payments-dlq`.
+
+**Configuração via environment (opcional):**
+
+| Variável            | Default | Descrição                                   |
+| ------------------- | ------- | ------------------------------------------- |
+| `QUEUE_MAX_RETRIES` | `3`     | Número máximo de retries antes do NACK.     |
+
+**Consumer opcional da DLQ:**
+
+O `RabbitMqConsumer` pode iniciar um consumer secundário na DLQ para log/alerta.
+Basta passar `consumeDlq: true` na configuração:
+
+```typescript
+const consumer = new RabbitMqConsumer(service, {
+  url: RABBITMQ_URL,
+  queue: "payments",
+  consumeDlq: true,
+});
+await consumer.start();
+```
+
+Quando ativado, cada mensagem que chega à `payments-dlq` é logada com nível
+`warn` (incluindo headers `x-death`, routing key original e conteúdo) e
+imediatamente `ACKed`.
+
 ## Arquitetura
 
 O projeto separa responsabilidades por camada:

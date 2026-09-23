@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { connect, type Channel, type ChannelModel, type Options } from "amqplib";
+import { assertDeadLetteredQueue } from "./setup.js";
 
 export interface PublishOptions {
   correlationId?: string;
@@ -147,7 +148,9 @@ export class RabbitMqProducer {
     const content = Buffer.from(JSON.stringify(payload));
     const publishOptions = this.buildPublishOptions(options, correlationId, headers);
 
-    await channel.assertQueue(queue);
+    // Use the shared DLQ-aware queue assertion so the queue is created with
+    // the dead-letter exchange arguments that match the consumer’s declaration.
+    await assertDeadLetteredQueue(channel, queue);
     channel.sendToQueue(queue, content, publishOptions);
   }
 

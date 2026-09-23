@@ -6,6 +6,7 @@ import { PostgresPaymentRepository } from "../../../src/repositories/postgres-pa
 import { PaymentService } from "../../../src/services/payment.service.js";
 import { RabbitMqProducer } from "../../../src/queue/producer.js";
 import { RabbitMqConsumer } from "../../../src/queue/consumer.js";
+import { assertDeadLetteredQueue } from "../../../src/queue/setup.js";
 import type { CreatePaymentDTO } from "../../../src/dto/create-payment.dto.js";
 import type { Payment } from "../../../src/domain/payment.js";
 
@@ -34,7 +35,7 @@ async function withChannel<T>(operation: (channel: Channel) => Promise<T>): Prom
 /** Removes every ready message from the queue so tests start from a clean slate. */
 async function purgeQueue(): Promise<void> {
   await withChannel(async (channel) => {
-    await channel.assertQueue(QUEUE, { durable: true });
+    await assertDeadLetteredQueue(channel, QUEUE);
     await channel.purgeQueue(QUEUE);
   });
 }
@@ -42,7 +43,7 @@ async function purgeQueue(): Promise<void> {
 /** Number of ready messages currently sitting in the queue. */
 async function queueMessageCount(): Promise<number> {
   return withChannel(async (channel) => {
-    const reply = await channel.assertQueue(QUEUE, { durable: true });
+    const reply = await assertDeadLetteredQueue(channel, QUEUE);
     return reply.messageCount;
   });
 }

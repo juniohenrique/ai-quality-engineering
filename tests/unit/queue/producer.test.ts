@@ -2,7 +2,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { RabbitMqProducer } from "../../../src/queue/producer";
 
 const mockChannel = {
+  assertExchange: vi.fn(),
   assertQueue: vi.fn(),
+  bindQueue: vi.fn(),
   sendToQueue: vi.fn(),
   close: vi.fn(),
 };
@@ -23,7 +25,9 @@ describe("RabbitMqProducer", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockChannel.assertQueue.mockResolvedValue(undefined);
+        mockChannel.assertQueue.mockResolvedValue({ messageCount: 0, consumerCount: 0 });
+    mockChannel.assertExchange.mockResolvedValue({ exchange: "" });
+    mockChannel.bindQueue.mockResolvedValue({});
     mockChannel.sendToQueue.mockReturnValue(true);
     mockChannel.close.mockResolvedValue(undefined);
     mockConnection.createChannel.mockResolvedValue(mockChannel);
@@ -37,7 +41,11 @@ describe("RabbitMqProducer", () => {
       const payload = { foo: "bar" };
       await producer.publish("test_queue", payload);
 
-      expect(mockChannel.assertQueue).toHaveBeenCalledWith("test_queue");
+            expect(mockChannel.assertQueue).toHaveBeenCalledWith("test_queue", {
+        durable: true,
+        deadLetterExchange: "payments-dlx",
+        deadLetterRoutingKey: "payments-dlq",
+      });
       expect(mockChannel.sendToQueue).toHaveBeenCalled();
 
       const callArgs = mockChannel.sendToQueue.mock.calls[0];
