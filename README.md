@@ -144,12 +144,12 @@ uma DLQ para posterior inspeção ou reprocessamento manual.
 
 **Topologia criada pelo consumer:**
 
-| Componente            | Tipo       | Nome                       | Argumentos                                           |
-| --------------------- | ---------- | -------------------------- | ---------------------------------------------------- |
-| Fila principal        | queue      | `payments`                 | `durable:true`, `x-dead-letter-exchange:payments-dlx`, `x-dead-letter-routing-key:payments-dlq` |
-| Dead-letter exchange  | exchange   | `payments-dlx`             | `direct`, `durable:true`                             |
-| Dead Letter Queue     | queue      | `payments-dlq`             | `durable:true`                                       |
-| Binding               | binding    | `payments-dlq`→`payments-dlx` | routing key `payments-dlq`                        |
+| Componente           | Tipo     | Nome                          | Argumentos                                                                                      |
+| -------------------- | -------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| Fila principal       | queue    | `payments`                    | `durable:true`, `x-dead-letter-exchange:payments-dlx`, `x-dead-letter-routing-key:payments-dlq` |
+| Dead-letter exchange | exchange | `payments-dlx`                | `direct`, `durable:true`                                                                        |
+| Dead Letter Queue    | queue    | `payments-dlq`                | `durable:true`                                                                                  |
+| Binding              | binding  | `payments-dlq`→`payments-dlx` | routing key `payments-dlq`                                                                      |
 
 **Fluxo:**
 
@@ -162,9 +162,9 @@ uma DLQ para posterior inspeção ou reprocessamento manual.
 
 **Configuração via environment (opcional):**
 
-| Variável            | Default | Descrição                                   |
-| ------------------- | ------- | ------------------------------------------- |
-| `QUEUE_MAX_RETRIES` | `3`     | Número máximo de retries antes do NACK.     |
+| Variável            | Default | Descrição                               |
+| ------------------- | ------- | --------------------------------------- |
+| `QUEUE_MAX_RETRIES` | `3`     | Número máximo de retries antes do NACK. |
 
 **Consumer opcional da DLQ:**
 
@@ -200,6 +200,11 @@ Uma descricao detalhada dos componentes e fluxos esta em
 
 A estrategia de testes, suas camadas, dados, isolamento e fluxos E2E esta em
 [`docs/test-architecture.md`](docs/test-architecture.md).
+
+Um catalogo completo dos modos de falha do sistema distribuido (consumer
+indisponivel, mensagem duplicada, mensagem invalida, timeout, broker e DB
+indisponiveis, DLQ crescendo, correlation id) esta em
+[`docs/failure-modes.md`](docs/failure-modes.md).
 
 ### Health check
 
@@ -361,10 +366,11 @@ Ao final, o Stryker:
 - cria um baseline em `docs/mutation-report.md` com score geral e arquivos problemáticos.
 
 Para ver os detalhes do baseline:
+
 - **[Relatório de Mutação (Score Final S04-05)](docs/mutation-report.md)**
 
-    Os artefatos temporários do Stryker ficam em `stryker-tmp/` e já estão
-    ignorados pelo `.gitignore`.
+  Os artefatos temporários do Stryker ficam em `stryker-tmp/` e já estão
+  ignorados pelo `.gitignore`.
 
 Dica: para acelerar em PRs grandes, use o modo incremental:
 
