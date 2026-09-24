@@ -118,6 +118,72 @@ APP_PORT=3001 DB_PORT=5433 docker compose up --build
 exposta do PostgreSQL. Internamente, a aplicacao continua usando a porta
 `3000` e o banco continua usando a porta `5432` na rede do Compose.
 
+`RABBITMQ_PORT` altera a porta exposta do AMQP (5672) e
+`RABBITMQ_MANAGEMENT_PORT` altera a porta exposta da UI de gerenciamento
+(15672). Internamente, o RabbitMQ continua usando as portas `5672` e `15672`
+na rede do Compose.
+
+### RabbitMQ
+
+O Compose tambem provisiona um RabbitMQ 3.13 com interface de gerenciamento:
+
+```bash
+docker compose up -d rabbitmq
+```
+
+A UI de gerenciamento esta disponivel em `http://localhost:15672` com as
+credenciais `guest` / `guest` (configuradas via `RABBITMQ_DEFAULT_USER` e
+`RABBITMQ_DEFAULT_PASS`). A porta AMQP para clientes de mensagens e `5672`.
+O healthcheck usa `rabbitmq-diagnostics ping`.
+
+#### Dead Letter Queue (DLQ)
+
+O projeto implementa o padrão **Dead Letter Queue** para a fila `payments`,
+garantindo que mensagens que excedem o limite de tentativas sejam rotas para
+uma DLQ para posterior inspeção ou reprocessamento manual.
+
+**Topologia criada pelo consumer:**
+
+| Componente           | Tipo     | Nome                          | Argumentos                                                                                      |
+| -------------------- | -------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| Fila principal       | queue    | `payments`                    | `durable:true`, `x-dead-letter-exchange:payments-dlx`, `x-dead-letter-routing-key:payments-dlq` |
+| Dead-letter exchange | exchange | `payments-dlx`                | `direct`, `durable:true`                                                                        |
+| Dead Letter Queue    | queue    | `payments-dlq`                | `durable:true`                                                                                  |
+| Binding              | binding  | `payments-dlq`→`payments-dlx` | routing key `payments-dlq`                                                                      |
+
+**Fluxo:**
+
+1. O consumer publica a mensagem na fila `payments` (via producer ou diretamente).
+2. Em caso de falha, o consumer re-publica com header `x-retry-count` incrementado
+   e delay exponencial (`retryBaseDelayMs × 2^retryCount`).
+3. Após `QUEUE_MAX_RETRIES` tentativas (default **3**), o consumer faz `NACK(msg, false, false)`.
+4. O RabbitMQ, devido ao argumento `x-dead-letter-exchange`, encaminha a mensagem
+   para o exchange `payments-dlx`, que a roteia para `payments-dlq`.
+
+**Configuração via environment (opcional):**
+
+| Variável            | Default | Descrição                               |
+| ------------------- | ------- | --------------------------------------- |
+| `QUEUE_MAX_RETRIES` | `3`     | Número máximo de retries antes do NACK. |
+
+**Consumer opcional da DLQ:**
+
+O `RabbitMqConsumer` pode iniciar um consumer secundário na DLQ para log/alerta.
+Basta passar `consumeDlq: true` na configuração:
+
+```typescript
+const consumer = new RabbitMqConsumer(service, {
+  url: RABBITMQ_URL,
+  queue: "payments",
+  consumeDlq: true,
+});
+await consumer.start();
+```
+
+Quando ativado, cada mensagem que chega à `payments-dlq` é logada com nível
+`warn` (incluindo headers `x-death`, routing key original e conteúdo) e
+imediatamente `ACKed`.
+
 ## Arquitetura
 
 O projeto separa responsabilidades por camada:
@@ -134,6 +200,11 @@ Uma descricao detalhada dos componentes e fluxos esta em
 
 A estrategia de testes, suas camadas, dados, isolamento e fluxos E2E esta em
 [`docs/test-architecture.md`](docs/test-architecture.md).
+
+Um catalogo completo dos modos de falha do sistema distribuido (consumer
+indisponivel, mensagem duplicada, mensagem invalida, timeout, broker e DB
+indisponiveis, DLQ crescendo, correlation id) esta em
+[`docs/failure-modes.md`](docs/failure-modes.md).
 
 ### Health check
 
@@ -295,10 +366,11 @@ Ao final, o Stryker:
 - cria um baseline em `docs/mutation-report.md` com score geral e arquivos problemáticos.
 
 Para ver os detalhes do baseline:
+
 - **[Relatório de Mutação (Score Final S04-05)](docs/mutation-report.md)**
 
-    Os artefatos temporários do Stryker ficam em `stryker-tmp/` e já estão
-    ignorados pelo `.gitignore`.
+  Os artefatos temporários do Stryker ficam em `stryker-tmp/` e já estão
+  ignorados pelo `.gitignore`.
 
 Dica: para acelerar em PRs grandes, use o modo incremental:
 

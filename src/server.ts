@@ -152,14 +152,19 @@ const server = createServer(async (request, response) => {
   await healthController.handleHealth(response);
 });
 
-const databaseReady = await waitForDatabase(pool);
-
-if (!databaseReady) {
-  console.error("Database unavailable after retrying connection");
-}
-
+// Start the HTTP server immediately so /health can respond (503 if DB is
+// unavailable) rather than blocking startup on database readiness.
 server.listen(port, () => {
   console.log(`AI Quality Engineering app listening on port ${port}`);
+});
+
+// Database readiness is checked out-of-band; a non-ready DB degrades /health
+// to 503 but never blocks the server from accepting connections.
+const databaseReady = waitForDatabase(pool);
+void databaseReady.then((ready) => {
+  if (!ready) {
+    console.error("Database unavailable after retrying connection");
+  }
 });
 
 const shutdown = async (): Promise<void> => {

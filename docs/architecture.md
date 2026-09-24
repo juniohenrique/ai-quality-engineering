@@ -135,3 +135,7 @@ A cobertura exige 80% de linhas, statements e funcoes, e 75% de branches.
 
 A separacao em camadas foi registrada em
 [`docs/adr/0001-arquitetura-em-camadas.md`](adr/0001-arquitetura-em-camadas.md).
+
+Os modos de falha do sistema distribuído (pipeline assíncrono
+Producer → RabbitMQ → Consumer → PostgreSQL) e suas mitigações estão em
+[`docs/failure-modes.md`](failure-modes.md).
