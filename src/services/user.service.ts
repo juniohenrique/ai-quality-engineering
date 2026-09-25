@@ -56,6 +56,8 @@ export class UserService {
       id,
       email,
       userName: input.userName,
+      passwordHash: existingUser.passwordHash,
+      role: existingUser.role,
     });
 
     await this.repository.update(updatedUser);

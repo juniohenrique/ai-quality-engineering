@@ -6,7 +6,9 @@ const databaseUrl =
 export const testDatabase = new Pool({ connectionString: databaseUrl });
 
 export async function resetDatabase(): Promise<void> {
-  await testDatabase.query("TRUNCATE TABLE users, payments RESTART IDENTITY CASCADE");
+  await testDatabase.query(
+    "TRUNCATE TABLE users, payments, password_reset_tokens RESTART IDENTITY CASCADE",
+  );
 }
 
 export async function closeDatabase(): Promise<void> {

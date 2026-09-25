@@ -13,6 +13,8 @@ describe("User", () => {
       id: "user-1",
       email: "user@example.com",
       userName: "Ada Lovelace",
+      passwordHash: null,
+      role: "user",
     });
   });
 

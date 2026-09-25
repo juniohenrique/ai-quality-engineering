@@ -9,7 +9,9 @@ import {
 describe("PostgresUserRepository", () => {
   it("maps rows to users and uses parameterized queries", async () => {
     const query = vi.fn().mockResolvedValue({
-      rows: [{ id: "user-1", email: "ada@example.com", userName: "Ada Lovelace" }],
+      rows: [
+        { id: "user-1", email: "ada@example.com", userName: "Ada Lovelace", passwordHash: null, role: "user" },
+      ],
     });
     const repository = new PostgresUserRepository({ query });
 
@@ -17,7 +19,7 @@ describe("PostgresUserRepository", () => {
       new User({ id: "user-1", email: "ada@example.com", userName: "Ada Lovelace" }),
     );
     expect(query).toHaveBeenCalledWith(
-      'SELECT id, email, user_name AS "userName" FROM users WHERE id = $1',
+      'SELECT id, email, user_name AS "userName", password_hash AS "passwordHash", role FROM users WHERE id = $1',
       ["user-1"],
     );
   });

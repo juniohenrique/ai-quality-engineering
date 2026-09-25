@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import { User } from "../domain/user.js";
+import { User, type UserRole } from "../domain/user.js";
 import type { UserRepository } from "./user.repository.js";
 
 export class EmailAlreadyExistsError extends Error {
@@ -22,6 +22,8 @@ interface UserRow {
   id: string;
   email: string;
   userName: string;
+  passwordHash: string | null;
+  role: string;
 }
 
 export class PostgresUserRepository implements UserRepository {
@@ -29,14 +31,14 @@ export class PostgresUserRepository implements UserRepository {
 
   async findAll(): Promise<User[]> {
     const result = await this.pool.query<UserRow>(
-      'SELECT id, email, user_name AS "userName" FROM users ORDER BY created_at, id',
+      'SELECT id, email, user_name AS "userName", password_hash AS "passwordHash", role FROM users ORDER BY created_at, id',
     );
     return result.rows.map(toUser);
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
     const result = await this.pool.query<UserRow>(
-      'SELECT id, email, user_name AS "userName" FROM users WHERE email = $1',
+      'SELECT id, email, user_name AS "userName", password_hash AS "passwordHash", role FROM users WHERE email = $1',
       [email],
     );
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -44,7 +46,7 @@ export class PostgresUserRepository implements UserRepository {
 
   async findById(id: string): Promise<User | undefined> {
     const result = await this.pool.query<UserRow>(
-      'SELECT id, email, user_name AS "userName" FROM users WHERE id = $1',
+      'SELECT id, email, user_name AS "userName", password_hash AS "passwordHash", role FROM users WHERE id = $1',
       [id],
     );
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -52,11 +54,10 @@ export class PostgresUserRepository implements UserRepository {
 
   async save(user: User): Promise<void> {
     try {
-      await this.pool.query("INSERT INTO users (id, email, user_name) VALUES ($1, $2, $3)", [
-        user.id,
-        user.email,
-        user.userName,
-      ]);
+      await this.pool.query(
+        "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
+        [user.id, user.email, user.userName, user.passwordHash, user.role],
+      );
     } catch (error) {
       throw mapDatabaseError(error);
     }
@@ -65,8 +66,8 @@ export class PostgresUserRepository implements UserRepository {
   async update(user: User): Promise<void> {
     try {
       const result = await this.pool.query(
-        "UPDATE users SET email = $2, user_name = $3, updated_at = NOW() WHERE id = $1",
-        [user.id, user.email, user.userName],
+        "UPDATE users SET email = $2, user_name = $3, password_hash = $4, role = $5, updated_at = NOW() WHERE id = $1",
+        [user.id, user.email, user.userName, user.passwordHash, user.role],
       );
 
       if (result.rowCount === 0) {
@@ -84,9 +85,17 @@ export class PostgresUserRepository implements UserRepository {
 }
 
 function toUser(row: UserRow): User {
-  // The SQL queries alias `user_name` as `userName`, so the row exposes
-  // `userName` directly. Map it to the domain property here.
-  return new User({ id: row.id, email: row.email, userName: row.userName });
+  // The SQL queries alias `user_name` as `userName` and `password_hash` as
+  // `passwordHash`, so the row exposes those properties directly. Map them
+  // to the domain properties here. `passwordHash` is null when the DB stored
+  // NULL, and `role` is normalized via the User constructor.
+  return new User({
+    id: row.id,
+    email: row.email,
+    userName: row.userName,
+    passwordHash: row.passwordHash,
+    role: row.role as UserRole,
+  });
 }
 
 function mapDatabaseError(error: unknown): Error {

@@ -2,6 +2,8 @@ export interface ApiUser {
   id: string;
   email: string;
   userName: string;
+  passwordHash: string | null;
+  role: string;
 }
 
 export interface UserInput {
@@ -60,9 +62,10 @@ export class UserApiClient {
         "content-type": "application/json",
         ...options.headers,
       },
-    }).then(async (response) => ({
-      status: response.status,
-      body: response.status === 204 ? undefined : ((await response.json()) as T),
-    }));
+    }).then(async (response) => {
+      const body: T | undefined =
+        response.status === 204 ? undefined : ((await response.json()) as T);
+      return { status: response.status, body } as ApiResponse<T>;
+    });
   }
 }

@@ -30,6 +30,8 @@ describe("UserService", () => {
       id: expect.any(String),
       email: "user@example.com",
       userName: "Ada Lovelace",
+      passwordHash: null,
+      role: "user",
     });
     expect(repository.findByEmail).toHaveBeenCalledWith("user@example.com");
     expect(repository.save).toHaveBeenCalledWith(user);
@@ -118,11 +120,15 @@ describe("UserService", () => {
       id: "user-1",
       email: "updated@example.com",
       userName: "Ada Byron Lovelace",
+      passwordHash: null,
+      role: "user",
     });
     expect(repository.update).toHaveBeenCalledWith({
       id: "user-1",
       email: "updated@example.com",
       userName: "Ada Byron Lovelace",
+      passwordHash: null,
+      role: "user",
     });
   });
 
