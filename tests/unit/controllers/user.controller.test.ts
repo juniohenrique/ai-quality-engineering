@@ -231,6 +231,8 @@ describe("PUT /users/:id", () => {
       id: user.id,
       email: "ada.updated@example.com",
       userName: "Ada Byron Lovelace",
+      passwordHash: null,
+      role: "user",
     });
   });
 

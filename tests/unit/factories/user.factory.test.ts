@@ -8,6 +8,8 @@ describe("UserFactory", () => {
       id: "user-1",
       email: "user@example.com",
       userName: "Ada Lovelace",
+      passwordHash: null,
+      role: "user",
     });
   });
 
@@ -21,6 +23,8 @@ describe("UserFactory", () => {
       id: "user-2",
       email: "user@example.com",
       userName: "Grace Hopper",
+      passwordHash: null,
+      role: "user",
     });
   });
 
