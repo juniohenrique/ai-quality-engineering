@@ -17,6 +17,7 @@ import { writeErrorResponse } from "./http/error-response.js";
 import { AuthController } from "./controllers/auth.controller.js";
 import { User } from "./domain/user.js";
 import { PaymentController } from "./controllers/payment.controller.js";
+import { authenticate, extractBearerToken } from "./middlewares/auth.middleware.js";
 
 const { port, databaseUrl } = loadEnv();
 const pool = createPool(databaseUrl);
@@ -63,6 +64,24 @@ const server = createServer(async (request, response) => {
     } catch {
       writeErrorResponse(response, 400, "invalid_request", "Invalid request");
     }
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/logout" && request.method === "POST") {
+    const token = extractBearerToken(request);
+    await authController.handleLogout(response, token);
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/profile" && request.method === "GET") {
+    const authResult = authenticate(request, response);
+
+    if (!authResult.authenticated) {
+      return;
+    }
+
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ user: authResult.user }));
     return;
   }
 

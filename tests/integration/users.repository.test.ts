@@ -7,8 +7,7 @@ import {
   PostgresUserRepository,
 } from "../../src/repositories/postgres-user.repository.js";
 
-const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
-const describeDatabase = runDatabaseIntegration ? describe : describe.skip;
+const describeDatabase = describe;
 let repository: PostgresUserRepository;
 
 describeDatabase("PostgresUserRepository integration", () => {
