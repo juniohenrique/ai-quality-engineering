@@ -77,6 +77,26 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (requestUrl.pathname === "/auth/refresh" && request.method === "POST") {
+    try {
+      const body = await readRequestBody(request);
+      await authController.handleRefresh(JSON.parse(body), response);
+    } catch {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+    }
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/logout" && request.method === "POST") {
+    await authController.handleLogout(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/me" && request.method === "GET") {
+    await authController.handleMe(request, response);
+    return;
+  }
+
   if (requestUrl.pathname === "/setup" && request.method === "POST") {
     const body = await readRequestBody(request);
     let state = "";
