@@ -47,7 +47,20 @@ describe("GET /users", () => {
     await controller.handleList(response as never);
 
     expect(statusCode).toBe(200);
-    expect(JSON.parse(body)).toEqual([firstUser, secondUser]);
+    expect(JSON.parse(body)).toEqual([
+      {
+        id: firstUser.id,
+        email: firstUser.email,
+        userName: firstUser.userName,
+        role: firstUser.role,
+      },
+      {
+        id: secondUser.id,
+        email: secondUser.email,
+        userName: secondUser.userName,
+        role: secondUser.role,
+      },
+    ]);
   });
 });
 
@@ -175,7 +188,12 @@ describe("GET /users/:id", () => {
     await controller.handleFindById(user.id, response as never);
 
     expect(statusCode).toBe(200);
-    expect(JSON.parse(body)).toEqual(user);
+    expect(JSON.parse(body)).toEqual({
+      id: user.id,
+      email: user.email,
+      userName: user.userName,
+      role: user.role,
+    });
   });
 
   it("returns 404 when the user does not exist", async () => {
@@ -231,7 +249,6 @@ describe("PUT /users/:id", () => {
       id: user.id,
       email: "ada.updated@example.com",
       userName: "Ada Byron Lovelace",
-      passwordHash: null,
       role: "user",
     });
   });

@@ -52,7 +52,13 @@ beforeEach(async () => {
     const passwordHash = await bcrypt.hash("password", 12);
     await testDatabase.query(
       "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
-      ["test-user-id", "test@example.com", "Test User", passwordHash, "user"],
+      [
+        "00000000-0000-0000-0000-000000000001",
+        "test@example.com",
+        "Test User",
+        passwordHash,
+        "user",
+      ],
     );
   }
 });
@@ -68,7 +74,12 @@ describe("HTTP API", () => {
 
     const users = await userApi.getAll();
     expect(users.status).toBe(200);
-    expect(users.body).toEqual([]);
+    expect(users.body).toHaveLength(1);
+    expect(users.body[0]).toMatchObject({
+      email: "test@example.com",
+      userName: "Test User",
+    });
+    expect(users.body[0]).not.toHaveProperty("passwordHash");
 
     const missingRoute = await userApi.request<{ error: string; message: string }>("/unknown");
     expect(missingRoute.status).toBe(404);
