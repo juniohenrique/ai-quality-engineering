@@ -68,6 +68,7 @@ describe("PasswordResetService", () => {
       expect(result).toEqual({
         rawToken: expect.any(String),
         userId: "user-1",
+        email: "ada@example.com",
       });
       expect(result?.rawToken.length).toBeGreaterThan(0);
     });

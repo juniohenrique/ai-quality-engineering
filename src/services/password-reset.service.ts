@@ -35,9 +35,11 @@ export class PasswordResetService {
    * - Invalida (deleta) tokens anteriores do mesmo usuário, mantendo
    *   apenas um token ativo de cada vez.
    *
-   * @returns `{ rawToken, userId }` ou `null` quando o usuário não existe.
+   * @returns `{ rawToken, userId, email }` ou `null` quando o usuário não existe.
    */
-  async createResetToken(email: string): Promise<{ rawToken: string; userId: string } | null> {
+  async createResetToken(
+    email: string,
+  ): Promise<{ rawToken: string; userId: string; email: string } | null> {
     const user = await this.userService.findByEmail(email);
 
     if (!user) {
@@ -59,7 +61,7 @@ export class PasswordResetService {
       [user.id, tokenHash, expiresAt],
     );
 
-    return { rawToken, userId: user.id };
+    return { rawToken, userId: user.id, email: user.email };
   }
 
   /**
