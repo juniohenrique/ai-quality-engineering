@@ -155,6 +155,9 @@ jobs:
     needs: [lint, unit, integration, build]
     env:
       RABBITMQ_URL: amqp://guest:guest@127.0.0.1:5672
+      DATABASE_URL: postgres://postgres:postgres@localhost:5433/quality_test
+      DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/quality_test
+      RUN_DB_INTEGRATION: "true"
     services:
       postgres:
         image: postgres:16
@@ -190,6 +193,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - name: Run migrations
+        run: npm run migrate:up
       - run: npm run test:coverage
       - name: Upload coverage reports
         if: always()
