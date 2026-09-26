@@ -17,6 +17,9 @@ import { writeErrorResponse } from "./http/error-response.js";
 import { AuthController } from "./controllers/auth.controller.js";
 import { User } from "./domain/user.js";
 import { PaymentController } from "./controllers/payment.controller.js";
+import { PasswordService } from "./services/password.service.js";
+import { TokenService } from "./services/token.service.js";
+import { TokenBlacklistService } from "./services/token-blacklist.service.js";
 
 const { port, databaseUrl } = loadEnv();
 const pool = createPool(databaseUrl);
@@ -37,7 +40,15 @@ const paymentRepository =
 const paymentService = new PaymentService(paymentRepository);
 const paymentController = new PaymentController(paymentService);
 
-const authController = new AuthController();
+const passwordService = new PasswordService();
+const tokenService = new TokenService();
+const tokenBlacklist = new TokenBlacklistService();
+const authController = new AuthController({
+  userService,
+  passwordService,
+  tokenService,
+  blacklist: tokenBlacklist,
+});
 
 const readRequestBody = async (request: IncomingMessage): Promise<string> => {
   const chunks: Buffer[] = [];
@@ -63,6 +74,26 @@ const server = createServer(async (request, response) => {
     } catch {
       writeErrorResponse(response, 400, "invalid_request", "Invalid request");
     }
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/refresh" && request.method === "POST") {
+    try {
+      const body = await readRequestBody(request);
+      await authController.handleRefresh(JSON.parse(body), response);
+    } catch {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+    }
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/logout" && request.method === "POST") {
+    await authController.handleLogout(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/me" && request.method === "GET") {
+    await authController.handleMe(request, response);
     return;
   }
 

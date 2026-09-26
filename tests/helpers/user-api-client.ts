@@ -2,7 +2,6 @@ export interface ApiUser {
   id: string;
   email: string;
   userName: string;
-  passwordHash: string | null;
   role: string;
 }
 

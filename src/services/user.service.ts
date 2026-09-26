@@ -30,6 +30,11 @@ export class UserService {
     return user;
   }
 
+  async findByEmail(email: string): Promise<User | undefined> {
+    const normalized = email.trim().toLowerCase();
+    return this.repository.findByEmail(normalized);
+  }
+
   async findUserById(id: string): Promise<User | undefined> {
     return this.repository.findById(id);
   }

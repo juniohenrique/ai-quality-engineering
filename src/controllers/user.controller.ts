@@ -2,6 +2,7 @@ import type { ServerResponse } from "node:http";
 import type { UserService } from "../services/user.service.js";
 import type { CreateUserInput, UpdateUserInput } from "../services/user.service.js";
 import { writeErrorResponse } from "../http/error-response.js";
+import { toUserResponse } from "../http/user-response.js";
 
 export class UserController {
   constructor(
@@ -21,7 +22,7 @@ export class UserController {
       const user = await this.service.createUser(input);
 
       response.writeHead(201, { "content-type": "application/json" });
-      response.end(JSON.stringify(user));
+      response.end(JSON.stringify(toUserResponse(user)));
     } catch (error) {
       const statusCode = getUserErrorStatus(error);
       writeErrorResponse(
@@ -37,7 +38,7 @@ export class UserController {
     const users = await this.service.listUsers();
 
     response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify(users));
+    response.end(JSON.stringify(users.map(toUserResponse)));
   }
 
   async handleFindById(id: string, response: ServerResponse): Promise<void> {
@@ -49,7 +50,7 @@ export class UserController {
     }
 
     response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify(user));
+    response.end(JSON.stringify(toUserResponse(user)));
   }
 
   async handleUpdate(id: string, input: unknown, response: ServerResponse): Promise<void> {
@@ -67,7 +68,7 @@ export class UserController {
       }
 
       response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify(user));
+      response.end(JSON.stringify(toUserResponse(user)));
     } catch (error) {
       const statusCode = getUserErrorStatus(error);
       writeErrorResponse(

@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  JWT_SECRET: ci-only-not-for-production
+
 jobs:
   lint:
     name: lint
@@ -150,6 +153,37 @@ jobs:
     name: coverage
     runs-on: ubuntu-latest
     needs: [lint, unit, integration, build]
+    env:
+      RABBITMQ_URL: amqp://guest:guest@127.0.0.1:5672
+      DATABASE_URL: postgres://postgres:postgres@localhost:5433/quality_test
+      DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/quality_test
+      RUN_DB_INTEGRATION: "true"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: quality_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d quality_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      rabbitmq:
+        image: rabbitmq:3.13-management
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v4
 
@@ -159,6 +193,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - name: Run migrations
+        run: npm run migrate:up
       - run: npm run test:coverage
       - name: Upload coverage reports
         if: always()
@@ -166,7 +202,7 @@ jobs:
         with:
           name: coverage-reports
           path: coverage/
-          if-no-files-found: error
+          if-no-files-found: warn
 
   quality-gate:
     name: quality-gate

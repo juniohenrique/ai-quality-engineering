@@ -369,3 +369,231 @@ segundos em vez de minutos — e bloqueia o merge.
 - Não misturaria "estudar X" com "implementar X" na mesma issue.
 - Manteria o `learning-log.md` atualizado **semanalmente**, não ao final
   do sprint.
+---
+
+## Sprint 04 — Mutation + Concurrency
+
+### Issues #42 a #46 (S04-01 a S04-05): mutation testing
+
+- Coverage mede **linhas executadas**; mutation mede **asserções que
+  importam**. Os dois números não se substituem.
+- Baseline inicial baixo (score ~60%) é comum — o valor está na
+  evolução, não no número absoluto.
+- Surviving mutants são um **mapa de testes fracos**: cada um aponta
+  uma asserção que falta ou uma que é fraca demais.
+- Meta-testes com mutantes propositais provam que o Stryker funciona
+  antes de você confiar nele.
+- Documentar **por que** alguns mutantes sobrevivem (equivalentes,
+  inalcançáveis) evita perseguição infinita por 100%.
+
+### Issues #47 a #48 (S04-06, S04-07): Payment domain e POST /payments
+
+- Modelar status como enum explícito (`pending`, `completed`, etc.)
+  prepara o terreno para state machine (Sprint 06).
+- Validação de valor positivo pertence ao domínio, não ao controller.
+- Pagamentos têm invariantes mais fortes que User — `amount > 0`,
+  `currency` válida, `idempotencyKey` única.
+
+### Issue #49 (S04-08): idempotency key
+
+- Idempotência é **contrato HTTP**, não detalhe de banco. O cliente
+  manda a chave, o servidor garante "no máximo uma execução".
+- UNIQUE constraint no banco é a fonte da verdade — não confie em
+  check-then-insert (race condition).
+- Mapear `23505` (unique violation) para erro de domínio isola o
+  resto da aplicação do driver.
+
+### Issue #50 (S04-09): teste de repetição
+
+- Requisições repetidas com a mesma chave devem retornar o **mesmo
+  recurso**, não criar um novo.
+- Testar "mesma chave + mesmo payload" e "mesma chave + payload
+  diferente" são cenários distintos.
+
+### Issue #51 (S04-10): teste concorrente (100 requests)
+
+- Concorrência expõe bugs que teste serial não pega: race conditions,
+  deadlocks, transações perdidas.
+- 100 requests simultâneos no mesmo endpoint é o "happy path" de
+  caos — se o sistema aguenta, aguenta qualquer coisa menor.
+- Medir tempo total E número de erros 5xx é mais informativo que só
+  "passou/falhou".
+
+### Issue #52 (S04-11): race condition proposital
+
+- Reproduzir a race (remover UNIQUE, rodar 100 requests) **antes** de
+  corrigir documenta a natureza do problema.
+- `await` mal posicionado, check-then-act, cache sem invalidação são
+  as 3 causas mais comuns.
+- Regressão: o teste deve falhar se alguém remover a constraint.
+
+### Sprint 04 — Aprendizado consolidado
+
+Mutation testing inverte a lógica: em vez de perguntar "meu teste
+cobre essa linha?", pergunta "se essa linha mudar, meu teste
+detecta?". A resposta honesta é frequentemente desconfortável — e é
+exatamente por isso que vale a pena.
+
+Concorrência, por outro lado, é onde a teoria encontra a realidade:
+todo sistema sério tem race condition latente. Testar com 100
+requests simultâneos + idempotência forçada é a forma mais barata de
+descobrir se você tem uma.
+
+---
+
+## Sprint 05 — Distributed Systems (RabbitMQ)
+
+### Issues #53 a #54 (S05-01, S05-02): RabbitMQ e producer
+
+- Broker introduz uma **fronteira assíncrona** que muda o modelo
+  mental — operações deixam de ser request/response.
+- Producer deve ser idempotente por natureza; broker não garante
+  entrega única.
+- Configurar exchange, queue e bindings via código (setup.ts) em vez
+  de UI é a forma reproducível.
+
+### Issue #55 (S05-03): consumer
+
+- Consumer precisa decidir entre ACK, NACK (com/sem requeue) e drop
+  em cada mensagem — não é automático.
+- Prefetch count controla quantas mensagens o consumer pega de uma
+  vez; valor alto pode causar starvation em múltiplos consumers.
+- Logging estruturado com `correlationId` é essencial para rastrear
+  mensagens através do sistema.
+
+### Issue #56 (S05-04): teste producer/consumer
+
+- Teste ponta a ponta da fila é o análogo de integration test para
+  HTTP — valida o caminho real, não mocks.
+- Esperar mensagens assíncronas exige polling com timeout
+  (`waitForPayment`), não sleep arbitrário.
+
+### Issues #57 a #59 (S05-05 a S05-07): retry, DLQ, duplicatas
+
+- **Retry com backoff exponencial** é padrão para falhas transientes;
+  retry imediato piora congestionamento.
+- **DLQ (Dead Letter Queue)** é onde mensagens permanentemente
+  quebradas vão morrer — sem ela, você perde mensagens silenciosamente.
+- **Duplicatas são inevitáveis** em sistemas distribuídos. Idempotência
+  por `correlationId` é a única defesa real.
+
+### Issue #60 (S05-08): mensagem inválida
+
+- Mensagens malformadas (JSON quebrado, campos faltando) devem cair
+  em DLQ após esgotar retries, **sem** derrubar o consumer.
+- O consumer precisa ser resiliente a payloads arbitrários.
+
+### Issue #61 (S05-09): timeout
+
+- Timeout de processamento é diferente de timeout de rede — é sobre
+  "quanto tempo aceito esperar por essa mensagem?".
+- Timeout + retry + DLQ formam uma **tríade de resiliência**.
+
+### Issue #62 (S05-10): consumer indisponível
+
+- Mensagens **não podem ser perdidas** se o consumer está fora — o
+  broker retém até o próximo consumer conectar.
+- Documentar esse comportamento é parte do contrato operacional.
+
+### Issue #63 (S05-11): correlation ID
+
+- Correlation ID propagado do producer → consumer → logs → banco
+  permite rastrear uma operação inteira.
+- Sem ele, debugging de sistema distribuído é arqueologia.
+
+### Issue #64 (S05-12): failure modes
+
+- Documentar 8 modos de falha (retry, DLQ, duplicata, timeout,
+  consumer down, broker down, mensagem inválida, backpressure)
+  transforma conhecimento tácito em referência.
+- Cada modo deve ter: sintoma, mitigação, teste que cobre.
+
+### Sprint 05 — Aprendizado consolidado
+
+Sistemas distribuídos quebram de formas que sistemas monolíticos não
+quebram. O que muda: você não pode assumir "se eu mandei, chegou";
+você não pode assumir "se chegou, foi uma vez só"; você não pode
+assumir "se falhou, posso tentar de novo imediatamente".
+
+A tríade **retry + DLQ + idempotência** é o mínimo para sobreviver à
+realidade assíncrona. E correlation ID é o que separa "sistema
+observável" de "caixa preta que às vezes funciona".
+
+---
+
+## Sprint 06 — Security + Performance (em andamento)
+
+### Issue #270 (S06-00a): migration auth
+
+- Adicionar `password_hash` e `role` a uma tabela existente é mudança
+  **retrocompatível** — password_hash é NULLABLE, role tem DEFAULT.
+- Fail-fast em migration: `up` e `down` precisam ser idempotentes.
+- 13 arquivos de teste precisaram ajustar o shape do User — sinal
+  saudável de que o domínio é tipado corretamente.
+
+### Issues #271 (S06-00b): login real com bcrypt + JWT + RBAC
+
+Cinco bugs encontrados durante a implementação, cada um de uma
+natureza diferente:
+
+1. **`jti` ausente no token** — `signAccess`/`signRefresh` não passavam
+   `jwtid`, mascarado por `vi.mock("jsonwebtoken")` nos unit tests.
+   Só apareceu no integration. **Lição:** mockar a lib que você está
+   embrulhando torna o teste quase vazio.
+
+2. **`passwordHash` vazando em `GET /users`** — bug pré-existente, só
+   visível quando o seed começou a inserir hash real. Corrigido com
+   `toUserResponse()` serializer. **Lição:** teste de segurança
+   implícito ("o response NÃO contém X") é tão valioso quanto teste
+   positivo.
+
+3. **UUID inválido no seed** — `'test-user-id'` não é UUID; Postgres
+   rejeitou quando o seed rodou pela primeira vez. **Lição:** seeds
+   têm que ser sintaticamente válidos desde o início.
+
+4. **`JWT_SECRET` em CI** — fail-fast do `token.service.ts` cobrou o
+   preço em 5 jobs do workflow. **Lição:** fail-fast local não é
+   fail-fast em CI; workflow precisa de env fake explícita.
+
+5. **Contract desatualizado** — Pact pegou `passwordHash` removido,
+   expondo que consumers quebrariam. **Lição:** contract testing não
+   decide quem está certo, mas expõe a incompatibilidade; consumer
+   estava errado, provider correto.
+
+Bônus: **role do refresh token vinha do token, não do banco**. Um
+admin rebaixado continuava admin até fazer login de novo. Corrigido
+buscando role atual do banco em cada refresh. **Lição:** token nunca
+deve ser fonte de verdade para autorização; é só um transporte.
+
+### Job coverage — 3 patches consecutivos
+
+O job `coverage` do CI exigiu 3 fixes para funcionar:
+
+1. Faltavam `services:` (postgres + rabbitmq) — copiados do
+   `integration`.
+2. Faltava `migrate:up` antes do `test:coverage` — o script
+   `test:integration` auto-gerencia, o `test:coverage` não.
+3. `test:coverage` rodava sem `--no-file-parallelism`, causando races
+   em TRUNCATE e nas filas RabbitMQ.
+
+**Refactor sugerido para o Sprint 07:** padronizar todos os scripts
+de teste com hooks `pretest:*` que rodam migração, setam env e
+escolhem paralelismo conforme a natureza do teste. O acoplamento
+entre `package.json` e workflow está gerando dívida.
+
+### Sprint 06 — Aprendizado parcial (S06-00a/b)
+
+Segurança não é uma feature — é uma propriedade emergente de várias
+decisões pequenas: onde o secret vive, quando o hash é comparado,
+qual mensagem de erro é retornada, o que o token carrega, quando o
+token expira, o que o banco guarda.
+
+A pergunta certa não é "está seguro?", é **"o que um atacante
+aprende em cada resposta?"**. 401 genérico em login, resposta idêntica
+para email existente/inexistente, `passwordHash` nunca na resposta,
+role sempre vinda do banco — cada uma dessas decisões fecha um canal
+de informação.
+
+E CI é onde essas propriedades são testadas. Um PR que passa local
+mas falha em CI está revelando **acoplamento escondido** entre o
+código e o ambiente — e é exatamente por isso que CI existe.

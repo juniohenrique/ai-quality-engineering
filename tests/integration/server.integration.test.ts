@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { closeDatabase, resetDatabase } from "../setup/db.js";
+import bcrypt from "bcrypt";
+import { closeDatabase, resetDatabase, testDatabase } from "../setup/db.js";
 import { UserApiClient } from "../helpers/user-api-client.js";
 
 const port = 3100 + Math.floor(Math.random() * 1000);
@@ -48,6 +49,17 @@ afterAll(async () => {
 beforeEach(async () => {
   if (runDatabaseIntegration) {
     await resetDatabase();
+    const passwordHash = await bcrypt.hash("password", 12);
+    await testDatabase.query(
+      "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
+      [
+        "00000000-0000-0000-0000-000000000001",
+        "test@example.com",
+        "Test User",
+        passwordHash,
+        "user",
+      ],
+    );
   }
 });
 
@@ -62,7 +74,12 @@ describe("HTTP API", () => {
 
     const users = await userApi.getAll();
     expect(users.status).toBe(200);
-    expect(users.body).toEqual([]);
+    expect(users.body).toHaveLength(1);
+    expect(users.body[0]).toMatchObject({
+      email: "test@example.com",
+      userName: "Test User",
+    });
+    expect(users.body[0]).not.toHaveProperty("passwordHash");
 
     const missingRoute = await userApi.request<{ error: string; message: string }>("/unknown");
     expect(missingRoute.status).toBe(404);
@@ -111,18 +128,38 @@ describe("HTTP API", () => {
     expect(invalidPut.status).toBe(400);
   });
 
-  it("authenticates the mock login endpoint", async () => {
-    const login = await userApi.request<{ token: string }>("/auth/login", {
+  it("authenticates the login endpoint", async () => {
+    const validLogin = await userApi.request<{
+      accessToken: string;
+      refreshToken: string;
+    }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email: "test@example.com", password: "password" }),
     });
-    expect(login.status).toBe(200);
-    expect(login.body).toEqual({ token: "fake-token" });
+
+    if (runDatabaseIntegration) {
+      expect(validLogin.status).toBe(200);
+      expect(validLogin.body).toHaveProperty("accessToken");
+      expect(validLogin.body).toHaveProperty("refreshToken");
+      expect(typeof validLogin.body.accessToken).toBe("string");
+      expect(typeof validLogin.body.refreshToken).toBe("string");
+    } else {
+      // In-memory repository starts empty — no user registered.
+      expect(validLogin.status).toBe(401);
+      expect(validLogin.body).toEqual({
+        error: "invalid_credentials",
+        message: "Invalid credentials",
+      });
+    }
 
     const invalidLogin = await userApi.request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email: "test@example.com", password: "wrong" }),
     });
     expect(invalidLogin.status).toBe(401);
+    expect(invalidLogin.body).toEqual({
+      error: "invalid_credentials",
+      message: "Invalid credentials",
+    });
   });
 });

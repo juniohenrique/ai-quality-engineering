@@ -7,7 +7,6 @@ const user = {
   id: "user-1",
   email: "ada@example.com",
   userName: "Ada Lovelace",
-  passwordHash: null,
   role: "user",
 };
 
