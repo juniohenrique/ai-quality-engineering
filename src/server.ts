@@ -20,6 +20,11 @@ import { PaymentController } from "./controllers/payment.controller.js";
 import { PasswordService } from "./services/password.service.js";
 import { TokenService } from "./services/token.service.js";
 import { TokenBlacklistService } from "./services/token-blacklist.service.js";
+import { PasswordResetService } from "./services/password-reset.service.js";
+import { createEmailService } from "./services/email-service.factory.js";
+import { RabbitMqProducer } from "./queue/producer.js";
+import { EmailProducer } from "./queue/email-producer.js";
+import { EmailConsumer } from "./queue/email-consumer.js";
 
 const { port, databaseUrl } = loadEnv();
 const pool = createPool(databaseUrl);
@@ -43,11 +48,26 @@ const paymentController = new PaymentController(paymentService);
 const passwordService = new PasswordService();
 const tokenService = new TokenService();
 const tokenBlacklist = new TokenBlacklistService();
+const passwordResetService = new PasswordResetService(pool, userService);
+const rabbitMqProducer = new RabbitMqProducer();
+const emailProducer = new EmailProducer(rabbitMqProducer);
+
+let emailConsumer: EmailConsumer | null = null;
+try {
+  const emailService = await createEmailService();
+  emailConsumer = new EmailConsumer(emailService);
+  emailConsumer.start().catch((err) => console.error("email consumer failed to start", err));
+} catch (err) {
+  console.warn("Email consumer disabled:", err);
+}
+
 const authController = new AuthController({
   userService,
   passwordService,
   tokenService,
   blacklist: tokenBlacklist,
+  passwordResetService,
+  emailProducer,
 });
 
 const readRequestBody = async (request: IncomingMessage): Promise<string> => {
@@ -94,6 +114,26 @@ const server = createServer(async (request, response) => {
 
   if (requestUrl.pathname === "/auth/me" && request.method === "GET") {
     await authController.handleMe(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/forgot-password" && request.method === "POST") {
+    try {
+      const body = await readRequestBody(request);
+      await authController.handleForgotPassword(JSON.parse(body), response);
+    } catch {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+    }
+    return;
+  }
+
+  if (requestUrl.pathname === "/auth/reset-password" && request.method === "POST") {
+    try {
+      const body = await readRequestBody(request);
+      await authController.handleResetPassword(JSON.parse(body), response);
+    } catch {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+    }
     return;
   }
 
@@ -183,6 +223,20 @@ const server = createServer(async (request, response) => {
   await healthController.handleHealth(response);
 });
 
+// Graceful shutdown: closes email consumer (if enabled) and RabbitMQ producer,
+// then exits cleanly.
+const shutdown = async (): Promise<void> => {
+  if (emailConsumer !== null) {
+    await emailConsumer.close().catch(() => undefined);
+  }
+  await rabbitMqProducer.close().catch(() => undefined);
+  process.exit(0);
+};
+if (!process.env.VITEST) {
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
+
 // Start the HTTP server immediately so /health can respond (503 if DB is
 // unavailable) rather than blocking startup on database readiness.
 server.listen(port, () => {
@@ -197,11 +251,3 @@ void databaseReady.then((ready) => {
     console.error("Database unavailable after retrying connection");
   }
 });
-
-const shutdown = async (): Promise<void> => {
-  server.close();
-  await pool.end();
-};
-
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);

@@ -6,6 +6,8 @@ import type { PasswordService } from "../services/password.service.js";
 import type { TokenService } from "../services/token.service.js";
 import type { TokenBlacklistService } from "../services/token-blacklist.service.js";
 import type { AuthContext } from "../middlewares/auth.middleware.js";
+import type { PasswordResetService } from "../services/password-reset.service.js";
+import type { EmailProducer } from "../queue/email-producer.js";
 
 export interface LoginInput {
   email: string;
@@ -22,17 +24,15 @@ export interface RefreshInput {
  * user-enumeration via timing attacks.  The verification always returns `false`
  * because the supplied password will never match.
  */
-const DUMMY_PASSWORD_HASH =
-  "$2b$12$NwDTPYMMmTl9bqs7CMTDoO3LJS7Si4No0KHduAgi1luCScKdsvoEq";
+const DUMMY_PASSWORD_HASH = "$2b$12$NwDTPYMMmTl9bqs7CMTDoO3LJS7Si4No0KHduAgi1luCScKdsvoEq";
 
 export interface AuthDependencies {
   userService: Pick<UserService, "findByEmail" | "findUserById">;
-  passwordService: Pick<PasswordService, "verify">;
-  tokenService: Pick<
-    TokenService,
-    "signAccess" | "signRefresh" | "verifyAccess" | "verifyRefresh"
-  >;
+  passwordService: Pick<PasswordService, "verify" | "hash">;
+  tokenService: Pick<TokenService, "signAccess" | "signRefresh" | "verifyAccess" | "verifyRefresh">;
   blacklist: Pick<TokenBlacklistService, "add" | "isBlacklisted">;
+  passwordResetService: Pick<PasswordResetService, "createResetToken" | "consumeToken">;
+  emailProducer: Pick<EmailProducer, "publishPasswordReset">;
 }
 
 export class AuthController {
@@ -40,12 +40,16 @@ export class AuthController {
   private readonly passwordService: AuthDependencies["passwordService"];
   private readonly tokenService: AuthDependencies["tokenService"];
   private readonly blacklist: AuthDependencies["blacklist"];
+  private readonly passwordResetService: AuthDependencies["passwordResetService"];
+  private readonly emailProducer: AuthDependencies["emailProducer"];
 
   constructor(dependencies: AuthDependencies) {
     this.userService = dependencies.userService;
     this.passwordService = dependencies.passwordService;
     this.tokenService = dependencies.tokenService;
     this.blacklist = dependencies.blacklist;
+    this.passwordResetService = dependencies.passwordResetService;
+    this.emailProducer = dependencies.emailProducer;
   }
 
   async handleLogin(input: unknown, response: ServerResponse): Promise<void> {
@@ -61,27 +65,14 @@ export class AuthController {
     // a failed password check — preventing user-enumeration via timing.
     if (!user || user.passwordHash === null) {
       await this.passwordService.verify(input.password, DUMMY_PASSWORD_HASH);
-      writeErrorResponse(
-        response,
-        401,
-        "invalid_credentials",
-        "Invalid credentials",
-      );
+      writeErrorResponse(response, 401, "invalid_credentials", "Invalid credentials");
       return;
     }
 
-    const passwordValid = await this.passwordService.verify(
-      input.password,
-      user.passwordHash,
-    );
+    const passwordValid = await this.passwordService.verify(input.password, user.passwordHash);
 
     if (!passwordValid) {
-      writeErrorResponse(
-        response,
-        401,
-        "invalid_credentials",
-        "Invalid credentials",
-      );
+      writeErrorResponse(response, 401, "invalid_credentials", "Invalid credentials");
       return;
     }
 
@@ -194,6 +185,62 @@ export class AuthController {
     );
   }
 
+  /**
+   * Inicia o fluxo de redefinição de senha.
+   *
+   * Sempre retorna 204 — tanto para e-mails existentes quanto inexistentes —
+   * para não revelar a existência (ou ausência) de uma conta, prática
+   * conhecida como anti-enumeration.
+   *
+   * Quando o usuário existe, o token é criado e um e-mail é publicado na
+   * fila. Quando não existe, um custo equivalente a bcrypt é simulado para
+   * manter o tempo de resposta constante (mesmo padrão do `DUMMY_PASSWORD_HASH`
+   * usado no `handleLogin`).
+   */
+  async handleForgotPassword(input: unknown, response: ServerResponse): Promise<void> {
+    if (!isForgotPasswordInput(input)) {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+      return;
+    }
+
+    const result = await this.passwordResetService.createResetToken(input.email);
+
+    if (result !== null) {
+      await this.emailProducer.publishPasswordReset(result.email, result.rawToken);
+    } else {
+      // Timing-safe: simula o mesmo custo de bcrypt sem gerar token real
+      // (mesmo padrão do DUMMY_PASSWORD_HASH no handleLogin).
+      await this.passwordService.verify("dummy", DUMMY_PASSWORD_HASH);
+    }
+
+    response.writeHead(204);
+    response.end();
+  }
+
+  /**
+   * Redefine a senha do usuário consumindo um token de redefinição válido.
+   *
+   * Retorna 204 em sucesso. Retorna 400 (`invalid_token`) quando o token é
+   * inválido ou expirado.
+   */
+  async handleResetPassword(input: unknown, response: ServerResponse): Promise<void> {
+    if (!isResetPasswordInput(input)) {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+      return;
+    }
+
+    const newHash = await this.passwordService.hash(input.newPassword);
+    const ok = await this.passwordResetService.consumeToken(input.token, newHash);
+
+    if (!ok) {
+      writeErrorResponse(response, 400, "invalid_token", "Invalid or expired token");
+      return;
+    }
+
+    response.writeHead(204);
+    response.end();
+  }
+
   // ── private helpers ─────────────────────────────────────────────────
 
   private authenticate(request: IncomingMessage): AuthContext | null {
@@ -290,7 +337,6 @@ function isLoginInput(input: unknown): input is LoginInput {
   if (typeof input !== "object" || input === null) {
     return false;
   }
-
   const candidate = input as Record<string, unknown>;
   return (
     typeof candidate.email === "string" &&
@@ -304,10 +350,42 @@ function isRefreshInput(input: unknown): input is RefreshInput {
   if (typeof input !== "object" || input === null) {
     return false;
   }
-
   const candidate = input as Record<string, unknown>;
   return (
     typeof candidate.refreshToken === "string" &&
     candidate.refreshToken.trim().length > 0
+  );
+}
+
+interface ForgotPasswordInput {
+  email: string;
+}
+
+function isForgotPasswordInput(input: unknown): input is ForgotPasswordInput {
+  if (typeof input !== "object" || input === null) {
+    return false;
+  }
+  const candidate = input as Record<string, unknown>;
+  return (
+    typeof candidate.email === "string" &&
+    candidate.email.trim().length > 0
+  );
+}
+
+interface ResetPasswordInput {
+  token: string;
+  newPassword: string;
+}
+
+function isResetPasswordInput(input: unknown): input is ResetPasswordInput {
+  if (typeof input !== "object" || input === null) {
+    return false;
+  }
+  const candidate = input as Record<string, unknown>;
+  return (
+    typeof candidate.token === "string" &&
+    candidate.token.trim().length > 0 &&
+    typeof candidate.newPassword === "string" &&
+    candidate.newPassword.length >= 8
   );
 }

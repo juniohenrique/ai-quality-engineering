@@ -597,3 +597,19 @@ de informação.
 E CI é onde essas propriedades são testadas. Um PR que passa local
 mas falha em CI está revelando **acoplamento escondido** entre o
 código e o ambiente — e é exatamente por isso que CI existe.
+
+### S06-00c — Endpoints de reset E2E
+
+Fluxo manual testado em dev (não em CI): forgot → Ethereal → reset →
+login. Confirmado 204 idêntico para email existente/inexistente (anti-
+enumeration real), email real via Ethereal (SMTP 250 Accepted), token
+sha256 no banco, single-use via used_at, senha antiga 401, nova 200.
+
+**Tempo do endpoint `/auth/forgot-password`:** ~30ms (retorna antes do
+email sair — RabbitMQ desacoplou). Síncrono seria ~500ms.
+
+**Bug encontrado:** `auth.controller.ts` truncado pelo Zoo Code no PART A
+do 3d.1 — as 4 funções de type guard foram perdidas. Corrigido com
+`cat >>` manual. **Lição:** prompts que escrevem >100 linhas em um
+arquivo devem ser divididos; verificar com `tail` antes de rodar
+`typecheck`.

@@ -1,6 +1,6 @@
 import * as crypto from "node:crypto";
 import { connect, type Channel, type ChannelModel, type Options } from "amqplib";
-import { assertDeadLetteredQueue } from "./setup.js";
+import { DLX_NAME, DLQ_NAME, assertDeadLetteredQueue } from "./setup.js";
 
 export interface PublishOptions {
   correlationId?: string;
@@ -18,6 +18,10 @@ export interface PublishOptions {
   type?: string;
   userId?: string;
   appId?: string;
+  /** Nome da exchange de dead-letter (default: `payments-dlx`). */
+  dlxName?: string;
+  /** Nome da DLQ (default: `payments-dlq`). */
+  dlqName?: string;
 }
 
 export interface ProducerConfig {
@@ -114,7 +118,7 @@ export class RabbitMqProducer {
     connection.on("error", () => this.handleConnectionLost());
   }
 
-    private handleConnectionLost(): void {
+  private handleConnectionLost(): void {
     this.connection = null;
     this.channel = null;
     if (this.closed || this.connectionPromise !== null) {
@@ -136,11 +140,7 @@ export class RabbitMqProducer {
    *
    * @returns The correlation id that was used for the published message.
    */
-  async publish(
-    queue: string,
-    payload: unknown,
-    options?: PublishOptions,
-  ): Promise<string> {
+  async publish(queue: string, payload: unknown, options?: PublishOptions): Promise<string> {
     if (!this.isConnected) {
       await this.connect();
     }
@@ -157,7 +157,12 @@ export class RabbitMqProducer {
 
     // Use the shared DLQ-aware queue assertion so the queue is created with
     // the dead-letter exchange arguments that match the consumer's declaration.
-    await assertDeadLetteredQueue(channel, queue);
+    await assertDeadLetteredQueue(
+      channel,
+      queue,
+      options?.dlxName ?? DLX_NAME,
+      options?.dlqName ?? DLQ_NAME,
+    );
     channel.sendToQueue(queue, content, publishOptions);
 
     return correlationId;
