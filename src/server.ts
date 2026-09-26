@@ -232,8 +232,10 @@ const shutdown = async (): Promise<void> => {
   await rabbitMqProducer.close().catch(() => undefined);
   process.exit(0);
 };
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+if (!process.env.VITEST) {
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
 
 // Start the HTTP server immediately so /health can respond (503 if DB is
 // unavailable) rather than blocking startup on database readiness.
