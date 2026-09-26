@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
 
 export interface AccessTokenPayload {
@@ -44,6 +45,7 @@ export class TokenService {
     return jwt.sign(payload, JWT_SECRET, {
       algorithm: "HS256",
       expiresIn: ACCESS_TTL,
+      jwtid: randomUUID(),
     });
   }
 
@@ -51,6 +53,7 @@ export class TokenService {
     return jwt.sign(payload, JWT_SECRET, {
       algorithm: "HS256",
       expiresIn: REFRESH_TTL,
+      jwtid: randomUUID(),
     });
   }
 
