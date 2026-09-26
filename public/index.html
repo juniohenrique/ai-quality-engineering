@@ -4,14 +4,23 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Quality Engineering</title>
+    <link rel="stylesheet" href="/css/base.css" />
   </head>
   <body>
-    <main>
-      <h1>AI Quality Engineering</h1>
-      <nav aria-label="Navegação principal">
-        <a data-testid="home-login-link" href="/login.html">Login</a>
-        <a data-testid="home-users-link" href="/users.html">Usuários</a>
-      </nav>
+    <main class="page-container">
+      <header class="page-header">
+        <h1>AI Quality Engineering</h1>
+      </header>
+      <div class="home-card">
+        <p class="home-intro">
+          Plataforma de estudo em QA Engineering com foco em SDET e
+          AI Quality. Escolha uma opção abaixo para começar.
+        </p>
+        <nav class="home-nav" aria-label="Navegação principal">
+          <a class="btn-primary" data-testid="home-login-link" href="/login.html">Login</a>
+          <a class="btn-secondary" data-testid="home-users-link" href="/users.html">Ver usuários</a>
+        </nav>
+      </div>
     </main>
   </body>
 </html>

@@ -11,19 +11,36 @@ const loginForm = document.querySelector('[data-testid="login-form"]');
 if (loginForm) {
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const form = new FormData(loginForm);
-    const { response, body } = await jsonRequest("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
-    });
 
-    if (!response.ok) {
-      document.querySelector('[data-testid="login-message"]').textContent = body.message;
-      return;
+    const submitBtn = loginForm.querySelector('[data-testid="login-submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Entrando...";
+
+    try {
+      const form = new FormData(loginForm);
+      const { response, body } = await jsonRequest("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+      });
+
+      if (!response.ok) {
+        document.querySelector('[data-testid="login-message"]').textContent = body.message;
+        return;
+      }
+
+      if (!body?.accessToken) {
+        document.querySelector('[data-testid="login-message"]').textContent =
+          "Resposta inválida do servidor.";
+        return;
+      }
+
+      localStorage.setItem("auth_access_token", body.accessToken);
+      localStorage.setItem("auth_refresh_token", body.refreshToken);
+      window.location.assign("/users");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Entrar";
     }
-
-    localStorage.setItem("auth_token", body.token);
-    window.location.assign("/users");
   });
 }
 
@@ -95,7 +112,7 @@ const loadUsers = async () => {
       const row = document.createElement("tr");
       row.dataset.testid = "user-row";
       row.dataset.userId = user.id;
-      row.innerHTML = `<td>${user.name}</td><td>${user.email}</td>`;
+      row.innerHTML = `<td>${user.userName}</td><td>${user.email}</td>`;
       const actions = document.createElement("td");
       const edit = document.createElement("a");
       edit.dataset.testid = `user-edit-${user.id}`;
@@ -105,7 +122,7 @@ const loadUsers = async () => {
       const remove = document.createElement("button");
       remove.dataset.testid = `user-delete-${user.id}`;
       remove.dataset.userId = user.id;
-      remove.dataset.userName = user.name;
+      remove.dataset.userName = user.userName;
       remove.className = "action-link danger";
       remove.type = "button";
       remove.textContent = "Excluir";
@@ -211,7 +228,7 @@ const initializeUserForm = async () => {
     try {
       const { response, body } = await jsonRequest(`/users/${encodeURIComponent(userId)}`);
       if (response.ok) {
-        userName.value = body.name;
+        userName.value = body.userName;
         userEmail.value = body.email;
         userName.focus();
       } else {
@@ -261,7 +278,7 @@ const initializeUserForm = async () => {
         userId ? `/users/${encodeURIComponent(userId)}` : "/users",
         {
           method: userId ? "PUT" : "POST",
-          body: JSON.stringify({ email: userEmail.value, name: userName.value }),
+          body: JSON.stringify({ email: userEmail.value, userName: userName.value }),
         },
       );
 
