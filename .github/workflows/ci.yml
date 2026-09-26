@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  JWT_SECRET: ci-only-not-for-production
+
 jobs:
   lint:
     name: lint
