@@ -7,15 +7,13 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./tests/e2e",
+  workers: 1,
 
   /* Timeout para cada teste */
   timeout: 30 * 1000,
 
   /* Configuração de retries */
   retries: process.env.CI ? 1 : 0,
-
-  /* Paralelismo */
-  workers: process.env.CI ? 1 : undefined,
 
   /* Reporter */
   reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
@@ -42,13 +40,13 @@ export default defineConfig({
 
   /* Servidor de desenvolvimento */
   webServer: {
-    command: "npm run dev",
+    command: "npm run migrate:up && npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false, // ← era !process.env.CI
     timeout: 120 * 1000,
     env: {
       DATABASE_URL:
-        process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/quality_dev",
+        process.env.DATABASE_URL_TEST || "postgres://postgres:postgres@localhost:5433/quality_test",
     },
   },
 });

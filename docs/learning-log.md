@@ -613,3 +613,18 @@ do 3d.1 — as 4 funções de type guard foram perdidas. Corrigido com
 `cat >>` manual. **Lição:** prompts que escrevem >100 linhas em um
 arquivo devem ser divididos; verificar com `tail` antes de rodar
 `typecheck`.
+
+### S06-00d — paralelismo em E2E (mesmo cheiro do coverage)
+
+Playwright rodava workers: auto em dev (3+), e todos compartilhavam o
+mesmo Postgres com `resetDatabase()` em beforeEach. Race entre
+`password-reset.spec.ts:64` e outros specs → flake intermitente.
+
+**Padrão recorrente:** paralelismo + estado mutável compartilhado →
+flake. Já vimos em `test:coverage` (S06-00b). Solução sempre a mesma:
+serializar (`--no-file-parallelism` no Vitest, `workers: 1` no
+Playwright) enquanto os testes compartilharem recursos.
+
+**Caminho futuro (Sprint 07):** banco por worker (schema isolado ou
+transaction rollback) permite paralelismo seguro. Vale quando a suíte
+passar de ~1min serial.
