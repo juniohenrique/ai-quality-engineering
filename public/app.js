@@ -77,7 +77,7 @@ if (loginForm) {
     event.preventDefault();
 
     const submitBtn = loginForm.querySelector('[data-testid="login-submit"]');
-    const msgEl = loginForm.querySelector('[data-testid="login-message"]');
+    const msgEl = document.querySelector('[data-testid="login-message"]');
     clearMessage(msgEl);
 
     setLoading(submitBtn, true, "Entrando...");
@@ -107,6 +107,110 @@ if (loginForm) {
       setLoading(submitBtn, false);
     }
   });
+}
+
+// ======================== TELA DE RECUPERACAO DE SENHA ========================
+
+const forgotForm = document.querySelector('[data-testid="forgot-form"]');
+if (forgotForm) {
+  forgotForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitBtn = forgotForm.querySelector('[data-testid="forgot-submit"]');
+    const messageEl = document.querySelector('[data-testid="forgot-message"]');
+    const form = new FormData(forgotForm);
+
+    setLoading(submitBtn, true, "Enviando...");
+    try {
+      const { response } = await jsonRequest("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: form.get("email") }),
+      });
+
+      // Sempre 204 em sucesso; se falhou por validacao (400), mensagem generica.
+      if (response.status === 204) {
+        showMessage(
+          messageEl,
+          "Se o e-mail existir, você receberá um link de recuperação em instantes.",
+          "success",
+        );
+        forgotForm.reset();
+      } else {
+        showMessage(
+          messageEl,
+          "Não foi possível processar sua solicitação. Tente novamente.",
+          "error",
+        );
+      }
+    } catch {
+      showMessage(messageEl, "Erro de conexão. Tente novamente.", "error");
+    } finally {
+      setLoading(submitBtn, false);
+    }
+  });
+}
+
+// ======================== TELA DE REDEFINICAO DE SENHA ========================
+
+const resetForm = document.querySelector('[data-testid="reset-form"]');
+if (resetForm) {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+
+  // Se nao tem token na URL -> mensagem de erro e desabilitar form
+  if (!token) {
+    showMessage(
+      document.querySelector('[data-testid="reset-message"]'),
+      "Link inválido ou expirado. Solicite um novo.",
+      "error",
+    );
+    const btn = resetForm.querySelector('[data-testid="reset-submit"]');
+    if (btn) btn.disabled = true;
+  } else {
+    resetForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submitBtn = resetForm.querySelector('[data-testid="reset-submit"]');
+      const messageEl = document.querySelector('[data-testid="reset-message"]');
+      const form = new FormData(resetForm);
+      const newPassword = form.get("newPassword");
+      const confirm = form.get("confirmPassword");
+
+      if (newPassword !== confirm) {
+        showMessage(messageEl, "As senhas não coincidem.", "error");
+        return;
+      }
+      if (typeof newPassword !== "string" || newPassword.length < 8) {
+        showMessage(messageEl, "A senha deve ter pelo menos 8 caracteres.", "error");
+        return;
+      }
+
+      setLoading(submitBtn, true, "Redefinindo...");
+      try {
+        const { response, body } = await jsonRequest("/auth/reset-password", {
+          method: "POST",
+          body: JSON.stringify({ token, newPassword }),
+        });
+
+        if (response.status === 204) {
+          showMessage(
+            messageEl,
+            "Senha redefinida com sucesso. Redirecionando para o login...",
+            "success",
+          );
+          setTimeout(() => window.location.assign("/login.html"), 1500);
+        } else {
+          showMessage(
+            messageEl,
+            body?.message || "Link inválido ou expirado. Solicite um novo.",
+            "error",
+          );
+        }
+      } catch {
+        showMessage(messageEl, "Erro de conexão. Tente novamente.", "error");
+      } finally {
+        setLoading(submitBtn, false);
+      }
+    });
+  }
 }
 
 // ======================== TELA DE USERS ========================
