@@ -326,6 +326,17 @@ cobertura atual inclui:
 - respostas de erro padronizadas com `error` e `message`.
 - testes unitarios do `UserService` com cobertura de 100% no arquivo de servico.
 
+## Rodando testes E2E
+
+Antes de rodar `npm run test:e2e`, **pare o container app**:
+
+    docker compose stop app
+
+O Playwright sobe seu próprio servidor com `DATABASE_URL_TEST`
+(5433/quality_test). Se o container app estiver ativo na 3000,
+Playwright reusa ele (reuseExistingServer), mas o container aponta
+pro banco de dev (5432/quality) — testes falham por 401.
+
 ### Testes de propriedade
 
 Diferentemente dos testes de exemplo — que validam um caso específico, como
