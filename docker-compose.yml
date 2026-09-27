@@ -4,10 +4,17 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/quality
       PORT: 3000
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-dev-only-not-for-production}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-7d}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
       db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   db:
@@ -17,9 +24,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
+      # Mapeia apenas para uso local; em produção use DATABASE_URL via NETWORK_ALIASES
       - "${DB_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Volume nomeado persistente para dados do PostgreSQL
+      - type: volume
+        source: postgres_data
+        target: /var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d quality"]
       interval: 5s
