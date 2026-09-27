@@ -3,16 +3,24 @@ import type { UserService } from "../services/user.service.js";
 import type { CreateUserInput, UpdateUserInput } from "../services/user.service.js";
 import { writeErrorResponse } from "../http/error-response.js";
 import { toUserResponse } from "../http/user-response.js";
+import type { AuthContext } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/authz.middleware.js";
 
 export class UserController {
   constructor(
     private readonly service: Pick<
       UserService,
-      "createUser" | "deleteUser" | "findUserById" | "listUsers" | "updateUser"
+      "createUser" | "changeRole" | "deleteUser" | "findUserById" | "listUsers" | "updateUser"
     >,
   ) {}
 
-  async handleCreate(input: unknown, response: ServerResponse): Promise<void> {
+  async handleCreate(
+    context: AuthContext | null,
+    input: unknown,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!this.authorize(context, response)) return;
+
     if (!isCreateUserInput(input)) {
       writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       return;
@@ -34,14 +42,22 @@ export class UserController {
     }
   }
 
-  async handleList(response: ServerResponse): Promise<void> {
+  async handleList(context: AuthContext | null, response: ServerResponse): Promise<void> {
+    if (!this.authorize(context, response)) return;
+
     const users = await this.service.listUsers();
 
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify(users.map(toUserResponse)));
   }
 
-  async handleFindById(id: string, response: ServerResponse): Promise<void> {
+  async handleFindById(
+    context: AuthContext | null,
+    id: string,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!this.authorize(context, response)) return;
+
     const user = await this.service.findUserById(id);
 
     if (!user) {
@@ -53,7 +69,14 @@ export class UserController {
     response.end(JSON.stringify(toUserResponse(user)));
   }
 
-  async handleUpdate(id: string, input: unknown, response: ServerResponse): Promise<void> {
+  async handleUpdate(
+    context: AuthContext | null,
+    id: string,
+    input: unknown,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!this.authorize(context, response)) return;
+
     if (!isUpdateUserInput(input)) {
       writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       return;
@@ -80,7 +103,42 @@ export class UserController {
     }
   }
 
-  async handleDelete(id: string, response: ServerResponse): Promise<void> {
+  async handleChangeRole(
+    context: AuthContext | null,
+    id: string,
+    input: unknown,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!this.authorize(context, response)) return;
+
+    if (!isChangeRoleInput(input)) {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+      return;
+    }
+
+    // Anti-self: admin não altera a própria role
+    if (context!.userId === id) {
+      writeErrorResponse(response, 403, "forbidden", "Cannot change your own role");
+      return;
+    }
+
+    const user = await this.service.changeRole(id, input.role);
+    if (!user) {
+      writeErrorResponse(response, 404, "not_found", "User not found");
+      return;
+    }
+
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(toUserResponse(user)));
+  }
+
+  async handleDelete(
+    context: AuthContext | null,
+    id: string,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!this.authorize(context, response)) return;
+
     const deleted = await this.service.deleteUser(id);
 
     if (!deleted) {
@@ -90,6 +148,20 @@ export class UserController {
 
     response.writeHead(204);
     response.end();
+  }
+
+  // ── private helpers ─────────────────────────────────────────────────
+
+  private authorize(context: AuthContext | null, response: ServerResponse): context is AuthContext {
+    if (context === null) {
+      writeErrorResponse(response, 401, "unauthorized", "Unauthorized");
+      return false;
+    }
+    if (!requireRole(context, "admin")) {
+      writeErrorResponse(response, 403, "forbidden", "Forbidden");
+      return false;
+    }
+    return true;
   }
 }
 
@@ -108,6 +180,16 @@ function isCreateUserInput(input: unknown): input is CreateUserInput {
 }
 
 const isUpdateUserInput = isCreateUserInput satisfies (input: unknown) => input is UpdateUserInput;
+
+interface ChangeRoleInput {
+  role: "admin" | "user";
+}
+
+function isChangeRoleInput(input: unknown): input is ChangeRoleInput {
+  if (typeof input !== "object" || input === null) return false;
+  const c = input as Record<string, unknown>;
+  return c.role === "admin" || c.role === "user";
+}
 
 function getUserErrorStatus(error: unknown): number {
   return isUserError(error) && error.code === "EMAIL_ALREADY_EXISTS" ? 409 : 400;

@@ -2,6 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { UserController } from "../../../src/controllers/user.controller.js";
 import { InMemoryUserRepository } from "../../../src/repositories/in-memory-user.repository.js";
 import { UserService } from "../../../src/services/user.service.js";
+import type { AuthContext } from "../../../src/middlewares/auth.middleware.js";
+
+const adminCtx: AuthContext = {
+  userId: "admin-1",
+  role: "admin",
+  jti: "test-jti-admin",
+};
 
 function createResponse() {
   let statusCode: number | undefined;
@@ -44,7 +51,7 @@ describe("GET /users", () => {
       },
     };
 
-    await controller.handleList(response as never);
+    await controller.handleList(adminCtx, response as never);
 
     expect(statusCode).toBe(200);
     expect(JSON.parse(body)).toEqual([
@@ -70,6 +77,7 @@ describe("POST /users", () => {
     const output = createResponse();
 
     await controller.handleCreate(
+      adminCtx,
       { email: " ADA@EXAMPLE.COM ", userName: " Ada Lovelace " },
       output.response as never,
     );
@@ -87,6 +95,7 @@ describe("POST /users", () => {
     const output = createResponse();
 
     await controller.handleCreate(
+      adminCtx,
       { email: "invalid-email", userName: "Ada Lovelace" },
       output.response as never,
     );
@@ -111,7 +120,7 @@ describe("POST /users", () => {
       });
       const output = createResponse();
 
-      await controller.handleCreate(input, output.response as never);
+      await controller.handleCreate(adminCtx, input, output.response as never);
 
       expect(output.getStatusCode()).toBe(400);
       expect(JSON.parse(output.getBody())).toEqual({
@@ -133,6 +142,7 @@ describe("POST /users", () => {
     const output = createResponse();
 
     await controller.handleCreate(
+      adminCtx,
       { email: "ada@example.com", userName: "Ada Lovelace" },
       output.response as never,
     );
@@ -155,6 +165,7 @@ describe("POST /users", () => {
     const output = createResponse();
 
     await controller.handleCreate(
+      adminCtx,
       { email: "ada@example.com", userName: "Ada Lovelace" },
       output.response as never,
     );
@@ -185,7 +196,7 @@ describe("GET /users/:id", () => {
       },
     };
 
-    await controller.handleFindById(user.id, response as never);
+    await controller.handleFindById(adminCtx, user.id, response as never);
 
     expect(statusCode).toBe(200);
     expect(JSON.parse(body)).toEqual({
@@ -209,7 +220,7 @@ describe("GET /users/:id", () => {
       },
     };
 
-    await controller.handleFindById("missing-user", response as never);
+    await controller.handleFindById(adminCtx, "missing-user", response as never);
 
     expect(statusCode).toBe(404);
     expect(JSON.parse(body)).toEqual({
@@ -239,6 +250,7 @@ describe("PUT /users/:id", () => {
     };
 
     await controller.handleUpdate(
+      adminCtx,
       user.id,
       { email: "ada.updated@example.com", userName: "Ada Byron Lovelace" },
       response as never,
@@ -267,6 +279,7 @@ describe("PUT /users/:id", () => {
     };
 
     await controller.handleUpdate(
+      adminCtx,
       "missing-user",
       { email: "missing@example.com", userName: "Missing User" },
       response as never,
@@ -290,7 +303,7 @@ describe("DELETE /users/:id", () => {
     const controller = new UserController(service);
     const output = createResponse();
 
-    await controller.handleDelete(user.id, output.response as never);
+    await controller.handleDelete(adminCtx, user.id, output.response as never);
 
     expect(output.getStatusCode()).toBe(204);
     await expect(service.findUserById(user.id)).resolves.toBeUndefined();
@@ -300,7 +313,7 @@ describe("DELETE /users/:id", () => {
     const controller = new UserController(new UserService(new InMemoryUserRepository()));
     const output = createResponse();
 
-    await controller.handleDelete("missing-user", output.response as never);
+    await controller.handleDelete(adminCtx, "missing-user", output.response as never);
 
     expect(output.getStatusCode()).toBe(404);
     expect(JSON.parse(output.getBody())).toEqual({
@@ -322,7 +335,7 @@ describe("DELETE /users/:id", () => {
       });
       const output = createResponse();
 
-      await controller.handleUpdate("user-1", input, output.response as never);
+      await controller.handleUpdate(adminCtx, "user-1", input, output.response as never);
 
       expect(output.getStatusCode()).toBe(400);
       expect(JSON.parse(output.getBody())).toEqual({
@@ -344,6 +357,7 @@ describe("DELETE /users/:id", () => {
     const output = createResponse();
 
     await controller.handleUpdate(
+      adminCtx,
       "user-1",
       { email: "ada@example.com", userName: "Ada Lovelace" },
       output.response as never,
@@ -367,6 +381,7 @@ describe("DELETE /users/:id", () => {
     const output = createResponse();
 
     await controller.handleUpdate(
+      adminCtx,
       "user-1",
       { email: "ada@example.com", userName: "Ada Lovelace" },
       output.response as never,

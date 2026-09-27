@@ -206,6 +206,8 @@ indisponivel, mensagem duplicada, mensagem invalida, timeout, broker e DB
 indisponiveis, DLQ crescendo, correlation id) esta em
 [`docs/failure-modes.md`](docs/failure-modes.md).
 
+A camada de decisão tipada (Jev) integrada ao Zoo Code para evitar loops do agente está em [`docs/ai-decision-layer.md`](docs/ai-decision-layer.md).
+
 ### Health check
 
 O fluxo de `/health` e:
