@@ -141,7 +141,7 @@ input:focus {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-input:invalid:not(:placeholder-shown) {
+input:user-invalid {
   border-color: var(--color-error);
 }
 
@@ -180,6 +180,98 @@ input:disabled {
   border: 1px solid #fecaca;
 }
 
+.page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--space-8);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.page-header h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 var(--space-4);
+  color: var(--color-text);
+}
+
+h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 var(--space-3);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+a.btn-primary,
+a.btn-secondary {
+  text-decoration: none;
+}
+
+a.btn-primary:hover,
+a.btn-secondary:hover {
+  text-decoration: none;
+}
+
+.form-card .form-links {
+  margin: var(--space-4) 0 0;
+  text-align: center;
+  font-size: 0.9375rem;
+}
+
+.form-card .form-links + .form-links {
+  margin-top: var(--space-2);
+}
+
+.home-card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-8);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.home-intro {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-muted);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.home-nav {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.home-nav a {
+  text-decoration: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -192,4 +284,11 @@ input:disabled {
   .form-card {
     animation: none;
   }
+}
+
+.form-card .form-intro {
+  margin: 0 0 var(--space-5);
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
 }

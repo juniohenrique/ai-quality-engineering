@@ -4,9 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Login | AI Quality Engineering</title>
+    <link rel="stylesheet" href="/css/base.css" />
   </head>
   <body>
-    <main>
+    <main class="form-card">
       <h1>Login</h1>
       <form data-testid="login-form">
         <label for="email">E-mail</label>
@@ -19,10 +20,15 @@
           required
           type="password"
         />
-        <button data-testid="login-submit" type="submit">Entrar</button>
+        <button data-testid="login-submit" type="submit" class="btn-primary">Entrar</button>
       </form>
-      <p data-testid="login-message" role="status"></p>
-      <a data-testid="login-users-link" href="/users">Usuários</a>
+      <p data-testid="login-message" role="status" aria-live="polite" class="message"></p>
+      <p class="form-links">
+        <a data-testid="login-forgot-link" href="/forgot-password">Esqueci minha senha</a>
+      </p>
+      <p class="form-links">
+        <a data-testid="login-users-link" href="/users">Ver usuários cadastrados</a>
+      </p>
     </main>
     <script src="/app.js"></script>
   </body>
