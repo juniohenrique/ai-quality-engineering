@@ -101,7 +101,7 @@ describe("Provider Verification", () => {
           authorization: `Bearer ${adminToken}`,
         },
         body: JSON.stringify({
-          state: "a user with id user-1 exists",
+          state: "a user with id 00000000-0000-0000-0000-000000000001 exists",
         }),
       });
     } catch (err) {
@@ -151,7 +151,7 @@ describe("Provider Verification", () => {
           }),
       logLevel: "warn",
       stateHandlers: {
-        "a user with id user-1 exists": async () => {
+        "a user with id 00000000-0000-0000-0000-000000000001 exists": async () => {
           // O estado ja foi preparado no beforeAll (via fetch para /setup, fora do
           // escopo de interceptacao do Pact). O /setup e idempotente (Part B).
           // Retornamos Promise.resolve({}) para evitar que o Pact Verifier

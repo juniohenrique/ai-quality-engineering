@@ -148,12 +148,12 @@ const server = createServer(async (request, response) => {
       // ignore body when it is not a JSON object, no state to set up
     }
 
-    if (state === "a user with id user-1 exists") {
-      const existing = await userRepository.findById("user-1");
+    if (state === "a user with id 00000000-0000-0000-0000-000000000001 exists") {
+      const existing = await userRepository.findById("00000000-0000-0000-0000-000000000001");
       if (!existing) {
         await userRepository.save(
           new User({
-            id: "user-1",
+            id: "00000000-0000-0000-0000-000000000001",
             email: "ada@example.com",
             userName: "Ada Lovelace",
           }),
