@@ -4,9 +4,12 @@ import { Verifier } from "@pact-foundation/pact";
 import { pactOptions, pactBroker } from "./pact.config.ts";
 import { loadEnv } from "../../src/config/env.ts";
 import { closeDatabase, resetDatabase } from "../setup/db.ts";
+import bcrypt from "bcrypt";
+import { testDatabase } from "../setup/db.js";
 
 describe("Provider Verification", () => {
   let serverStarted = false;
+  let adminToken = "";
 
   beforeAll(async () => {
     const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
@@ -22,6 +25,11 @@ describe("Provider Verification", () => {
 
     if (runDatabaseIntegration) {
       await resetDatabase();
+      const hash = await bcrypt.hash("admin-pact-12345", 12);
+      await testDatabase.query(
+        "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
+        ["admin-pact", "admin-pact@example.com", "Admin Pact", hash, "admin"],
+      );
     }
     if (!runDatabaseIntegration) {
       process.env.USER_REPOSITORY = "memory";
@@ -36,6 +44,25 @@ describe("Provider Verification", () => {
       try {
         await client.getAll();
         serverStarted = true;
+        if (runDatabaseIntegration) {
+          try {
+            const login = await client.request("/auth/login", {
+              method: "POST",
+              body: JSON.stringify({
+                email: "admin-pact@example.com",
+                password: "admin-pact-12345",
+              }),
+            });
+            if (login.status === 200) {
+              const loginBody = login.body as { accessToken: string };
+              adminToken = loginBody.accessToken;
+            } else {
+              console.warn(`Pact provider: admin login returned status ${login.status}`);
+            }
+          } catch (err) {
+            console.warn("Pact provider: failed to obtain admin token", err);
+          }
+        }
         return;
       } catch {
         /* server not ready yet, will retry */
@@ -88,6 +115,12 @@ describe("Provider Verification", () => {
           }),
       verbose: true,
       providerStatesSetupUrl: `${baseUrl}/setup`,
+      requestFilter: (req) => {
+        if (adminToken) {
+          req.headers["authorization"] = `Bearer ${adminToken}`;
+        }
+        return req;
+      },
     });
 
     await verifier.verifyProvider();

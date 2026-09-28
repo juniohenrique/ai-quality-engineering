@@ -1,4 +1,6 @@
 import { PactV3 } from "@pact-foundation/pact";
+import { Matchers } from "@pact-foundation/pact";
+const { like } = Matchers;
 import { describe, expect, it } from "vitest";
 import { UserApiClient } from "../helpers/user-api-client.js";
 import { pactOptions } from "./pact.config.js";
@@ -20,7 +22,10 @@ describe("User API consumer contract", () => {
       .withRequest({
         method: "GET",
         path: "/users/user-1",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          Authorization: like("Bearer test-admin-token"),
+        },
       })
       .willRespondWith({
         status: 200,
@@ -29,6 +34,7 @@ describe("User API consumer contract", () => {
       })
       .executeTest(async (mockServer) => {
         const client = new UserApiClient(mockServer.url);
+        client.defaultHeaders = { Authorization: "Bearer test-admin-token" };
         const response = await client.getById(user.id);
 
         expect(response.status).toBe(200);
