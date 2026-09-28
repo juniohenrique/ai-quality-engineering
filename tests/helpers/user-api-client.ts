@@ -22,6 +22,8 @@ interface RequestOptions {
 }
 
 export class UserApiClient {
+  defaultHeaders: Record<string, string> = {};
+
   constructor(private readonly baseUrl: string) {}
 
   getHealth(): Promise<ApiResponse<{ status: string; database: string }>> {
@@ -59,6 +61,7 @@ export class UserApiClient {
       ...options,
       headers: {
         "content-type": "application/json",
+        ...this.defaultHeaders,
         ...options.headers,
       },
     }).then(async (response) => {
