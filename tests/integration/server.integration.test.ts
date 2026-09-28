@@ -8,11 +8,13 @@ const baseUrl = `http://127.0.0.1:${port}`;
 const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
 const userApi = new UserApiClient(baseUrl);
 
+let accessToken = "";
+
 async function waitForServer(timeoutMs = 10000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      await userApi.getAll();
+      await userApi.getHealth();
       return;
     } catch {
       // server not ready yet — keep retrying
@@ -47,20 +49,41 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  if (runDatabaseIntegration) {
-    await resetDatabase();
-    const passwordHash = await bcrypt.hash("password", 12);
-    await testDatabase.query(
-      "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
-      [
-        "00000000-0000-0000-0000-000000000001",
-        "test@example.com",
-        "Test User",
-        passwordHash,
-        "user",
-      ],
-    );
-  }
+  if (!runDatabaseIntegration) return;
+
+  await resetDatabase();
+
+  const passwordHash = await bcrypt.hash("password", 12);
+  await testDatabase.query(
+    "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
+    ["00000000-0000-0000-0000-000000000001", "test@example.com", "Test User", passwordHash, "user"],
+  );
+
+  const adminPasswordHash = await bcrypt.hash("admin-pass-12345", 12);
+  await testDatabase.query(
+    "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
+    [
+      "00000000-0000-0000-0000-000000000002",
+      "admin@example.com",
+      "Admin User",
+      adminPasswordHash,
+      "admin",
+    ],
+  );
+
+  const login = await userApi.request<{ accessToken: string; refreshToken: string }>(
+    "/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email: "admin@example.com",
+        password: "admin-pass-12345",
+      }),
+    },
+  );
+  expect(login.status).toBe(200);
+  accessToken = login.body.accessToken;
+  userApi.defaultHeaders = { Authorization: `Bearer ${accessToken}` };
 });
 
 describe("HTTP API", () => {
@@ -74,12 +97,19 @@ describe("HTTP API", () => {
 
     const users = await userApi.getAll();
     expect(users.status).toBe(200);
-    expect(users.body).toHaveLength(1);
-    expect(users.body[0]).toMatchObject({
+    expect(users.body).toHaveLength(2);
+    const testUser = users.body.find((u) => u.email === "test@example.com");
+    const adminUser = users.body.find((u) => u.email === "admin@example.com");
+    expect(testUser).toMatchObject({
       email: "test@example.com",
       userName: "Test User",
     });
-    expect(users.body[0]).not.toHaveProperty("passwordHash");
+    expect(adminUser).toMatchObject({
+      email: "admin@example.com",
+      userName: "Admin User",
+      role: "admin",
+    });
+    expect(users.body.every((u) => !("passwordHash" in u))).toBe(true);
 
     const missingRoute = await userApi.request<{ error: string; message: string }>("/unknown");
     expect(missingRoute.status).toBe(404);
