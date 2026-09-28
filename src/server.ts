@@ -149,13 +149,16 @@ const server = createServer(async (request, response) => {
     }
 
     if (state === "a user with id user-1 exists") {
-      await userRepository.save(
-        new User({
-          id: "user-1",
-          email: "ada@example.com",
-          userName: "Ada Lovelace",
-        }),
-      );
+      const existing = await userRepository.findById("user-1");
+      if (!existing) {
+        await userRepository.save(
+          new User({
+            id: "user-1",
+            email: "ada@example.com",
+            userName: "Ada Lovelace",
+          }),
+        );
+      }
     }
 
     response.writeHead(201, { "content-type": "application/json" });
