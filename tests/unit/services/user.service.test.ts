@@ -187,4 +187,70 @@ describe("UserService", () => {
 
     await expect(service.deleteUser("missing-user")).resolves.toBe(false);
   });
+
+  describe("changeRole", () => {
+    it("changes the role of an existing user", async () => {
+      const repository = createRepository();
+      const user = new User({
+        id: "user-1",
+        email: "user@example.com",
+        userName: "Ada Lovelace",
+      });
+      vi.mocked(repository.findById).mockResolvedValue(user);
+      vi.mocked(repository.update).mockResolvedValue(undefined);
+      const service = new UserService(repository);
+
+      const result = await service.changeRole(user.id, "admin");
+
+      expect(result).toEqual({
+        id: "user-1",
+        email: "user@example.com",
+        userName: "Ada Lovelace",
+        passwordHash: null,
+        role: "admin",
+      });
+      expect(repository.update).toHaveBeenCalledWith(
+        new User({
+          id: "user-1",
+          email: "user@example.com",
+          userName: "Ada Lovelace",
+          role: "admin",
+        }),
+      );
+    });
+
+    it("returns undefined for missing user", async () => {
+      const repository = createRepository();
+      vi.mocked(repository.findById).mockResolvedValue(undefined);
+      const service = new UserService(repository);
+
+      const result = await service.changeRole("missing-id", "admin");
+
+      expect(result).toBeUndefined();
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it("preserves email, userName and passwordHash on role change", async () => {
+      const repository = createRepository();
+      const existingUser = new User({
+        id: "user-1",
+        email: "ada@example.com",
+        userName: "Ada Lovelace",
+        passwordHash: "secret-hash",
+      });
+      vi.mocked(repository.findById).mockResolvedValue(existingUser);
+      vi.mocked(repository.update).mockResolvedValue(undefined);
+      const service = new UserService(repository);
+
+      const result = await service.changeRole(existingUser.id, "admin");
+
+      expect(result).toEqual({
+        id: existingUser.id,
+        email: existingUser.email,
+        userName: existingUser.userName,
+        passwordHash: existingUser.passwordHash,
+        role: "admin",
+      });
+    });
+  });
 });

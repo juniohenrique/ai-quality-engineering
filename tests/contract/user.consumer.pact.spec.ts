@@ -1,10 +1,12 @@
 import { PactV3 } from "@pact-foundation/pact";
+import { Matchers } from "@pact-foundation/pact";
+const { like } = Matchers;
 import { describe, expect, it } from "vitest";
 import { UserApiClient } from "../helpers/user-api-client.js";
 import { pactOptions } from "./pact.config.js";
 
 const user = {
-  id: "user-1",
+  id: "00000000-0000-0000-0000-000000000001",
   email: "ada@example.com",
   userName: "Ada Lovelace",
   role: "user",
@@ -15,12 +17,15 @@ describe("User API consumer contract", () => {
     const provider = new PactV3(pactOptions);
 
     await provider
-      .given("a user with id user-1 exists")
+      .given("a user with id 00000000-0000-0000-0000-000000000001 exists")
       .uponReceiving("a request for a user by id")
       .withRequest({
         method: "GET",
-        path: "/users/user-1",
-        headers: { "content-type": "application/json" },
+        path: "/users/00000000-0000-0000-0000-000000000001",
+        headers: {
+          "content-type": "application/json",
+          Authorization: like("Bearer test-admin-token"),
+        },
       })
       .willRespondWith({
         status: 200,
@@ -29,6 +34,7 @@ describe("User API consumer contract", () => {
       })
       .executeTest(async (mockServer) => {
         const client = new UserApiClient(mockServer.url);
+        client.defaultHeaders = { Authorization: "Bearer test-admin-token" };
         const response = await client.getById(user.id);
 
         expect(response.status).toBe(200);

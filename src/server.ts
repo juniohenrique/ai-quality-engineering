@@ -25,6 +25,7 @@ import { createEmailService } from "./services/email-service.factory.js";
 import { RabbitMqProducer } from "./queue/producer.js";
 import { EmailProducer } from "./queue/email-producer.js";
 import { EmailConsumer } from "./queue/email-consumer.js";
+import { authenticate } from "./middlewares/auth.middleware.js";
 
 const { port, databaseUrl } = loadEnv();
 const pool = createPool(databaseUrl);
@@ -147,14 +148,17 @@ const server = createServer(async (request, response) => {
       // ignore body when it is not a JSON object, no state to set up
     }
 
-    if (state === "a user with id user-1 exists") {
-      await userRepository.save(
-        new User({
-          id: "user-1",
-          email: "ada@example.com",
-          userName: "Ada Lovelace",
-        }),
-      );
+    if (state === "a user with id 00000000-0000-0000-0000-000000000001 exists") {
+      const existing = await userRepository.findById("00000000-0000-0000-0000-000000000001");
+      if (!existing) {
+        await userRepository.save(
+          new User({
+            id: "00000000-0000-0000-0000-000000000001",
+            email: "ada@example.com",
+            userName: "Ada Lovelace",
+          }),
+        );
+      }
     }
 
     response.writeHead(201, { "content-type": "application/json" });
@@ -162,41 +166,62 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  const roleMatch = requestUrl.pathname.match(/^\/users\/([^/]+)\/role$/);
+  if (roleMatch && request.method === "PATCH") {
+    const [, roleId] = roleMatch;
+    if (roleId === undefined) {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+      return;
+    }
+    const ctx = authenticate(request);
+    try {
+      const body = await readRequestBody(request);
+      await userController.handleChangeRole(ctx, roleId, JSON.parse(body), response);
+    } catch {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+    }
+    return;
+  }
+
   const userIdMatch = requestUrl.pathname.match(/^\/users\/([^/]+)$/);
   const userId = userIdMatch?.[1];
 
   if (userId !== undefined) {
+    const ctx = authenticate(request);
+
     if (request.method === "DELETE") {
-      await userController.handleDelete(userId, response);
+      await userController.handleDelete(ctx, userId, response);
       return;
     }
 
     if (request.method === "PUT") {
       try {
         const body = await readRequestBody(request);
-        await userController.handleUpdate(userId, JSON.parse(body), response);
+        await userController.handleUpdate(ctx, userId, JSON.parse(body), response);
       } catch {
         writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       }
       return;
     }
 
-    await userController.handleFindById(userId, response);
+    await userController.handleFindById(ctx, userId, response);
     return;
   }
 
   if (requestUrl.pathname === "/users") {
+    const ctx = authenticate(request);
+
     if (request.method === "POST") {
       try {
         const body = await readRequestBody(request);
-        await userController.handleCreate(JSON.parse(body), response);
+        await userController.handleCreate(ctx, JSON.parse(body), response);
       } catch {
         writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       }
       return;
     }
 
-    await userController.handleList(response);
+    await userController.handleList(ctx, response);
     return;
   }
 

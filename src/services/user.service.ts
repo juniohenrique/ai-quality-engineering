@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { User } from "../domain/user.js";
+import type { UserRole } from "../domain/user.js";
 import type { UserRepository } from "../repositories/user.repository.js";
 
 export interface CreateUserInput {
@@ -67,6 +68,20 @@ export class UserService {
 
     await this.repository.update(updatedUser);
     return updatedUser;
+  }
+
+  async changeRole(id: string, role: UserRole): Promise<User | undefined> {
+    const existing = await this.repository.findById(id);
+    if (!existing) return undefined;
+    const updated = new User({
+      id: existing.id,
+      email: existing.email,
+      userName: existing.userName,
+      passwordHash: existing.passwordHash,
+      role,
+    });
+    await this.repository.update(updated);
+    return updated;
   }
 
   async deleteUser(id: string): Promise<boolean> {

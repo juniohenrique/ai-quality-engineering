@@ -45,6 +45,22 @@ const clearTokens = () => {
   localStorage.removeItem("auth_refresh_token");
 };
 
+const decodeJwtPayload = (token) => {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+};
+
+const getCurrentUserId = () => {
+  const token = getAccessToken();
+  if (!token) return null;
+  const payload = decodeJwtPayload(token);
+  return payload?.sub ?? null;
+};
+
 const requireAuth = () => {
   if (!getAccessToken()) {
     window.location.assign("/login.html");
@@ -277,7 +293,7 @@ if (userList && !requireAuth()) {
         const row = document.createElement("tr");
         row.dataset.testid = "user-row";
         row.dataset.userId = user.id;
-        row.innerHTML = `<td>${user.userName}</td><td>${user.email}</td>`;
+        row.innerHTML = `<td>${user.userName}</td><td>${user.email}</td><td>${user.role}</td>`;
         const actions = document.createElement("td");
         const edit = document.createElement("a");
         edit.dataset.testid = `user-edit-${user.id}`;
@@ -312,12 +328,16 @@ const initializeUserForm = async () => {
   const userId = new URLSearchParams(window.location.search).get("id");
   const userName = document.querySelector('[data-testid="user-name"]');
   const userEmail = document.querySelector('[data-testid="user-email"]');
+  const userRole = document.querySelector('[data-testid="user-role"]');
+  const roleError = document.getElementById("user-role-error");
   const userMessage = document.querySelector('[data-testid="user-message"]');
   const submitButton = document.querySelector('[data-testid="user-save"]');
   const cancelLink = document.querySelector('[data-testid="user-cancel"]');
   const nameError = document.getElementById("user-name-error");
   const emailError = document.getElementById("user-email-error");
   const legend = document.querySelector("legend");
+
+  let originalRole = userRole?.value ?? "user";
 
   // Mensagens de validação em português
   const validationMessages = {
@@ -332,6 +352,10 @@ const initializeUserForm = async () => {
     nameError.classList.remove("visible");
     emailError.textContent = "";
     emailError.classList.remove("visible");
+    if (roleError) {
+      roleError.textContent = "";
+      roleError.classList.remove("visible");
+    }
     clearMessage(userMessage);
     userName.setCustomValidity("");
     userEmail.setCustomValidity("");
@@ -396,6 +420,19 @@ const initializeUserForm = async () => {
       if (response.ok) {
         userName.value = body.userName;
         userEmail.value = body.email;
+
+        if (userRole) {
+          userRole.value = body.role;
+          originalRole = body.role;
+        }
+
+        // Anti-self: desabilita se o admin está editando a si mesmo
+        const currentUserId = getCurrentUserId();
+        if (userRole && currentUserId && currentUserId === userId) {
+          userRole.disabled = true;
+          userRole.title = "Você não pode alterar sua própria permissão.";
+        }
+
         userName.focus();
       } else {
         showMessage(userMessage, body.message || "Não foi possível carregar o usuário.", "error");
@@ -446,20 +483,43 @@ const initializeUserForm = async () => {
       );
 
       if (response.ok) {
-        // Exibir mensagem de sucesso
-        clearMessage(userMessage);
-        showMessage(
-          userMessage,
-          userId ? "Usuário atualizado." : "Usuário criado.",
-          "success",
-        );
+        // Se a role mudou, PATCH dedicado
+        const newRole = userRole?.value ?? "user";
+        const targetId = userId || body?.id;
+        const roleChanged = newRole !== originalRole;
 
-        // Redirecionar após 1.5s
-        setTimeout(() => {
-          window.location.assign("/users");
-        }, 1500);
+        if (targetId && roleChanged) {
+          try {
+            const { response: roleResponse, body: roleBody } = await fetchWithAuth(
+              `/users/${encodeURIComponent(targetId)}/role`,
+              {
+                method: "PATCH",
+                body: JSON.stringify({ role: newRole }),
+              },
+            );
+
+            if (!roleResponse.ok) {
+              showMessage(
+                userMessage,
+                roleBody?.message || "Usuário salvo, mas falhou ao alterar permissão.",
+                "error",
+              );
+              return; // não redireciona
+            }
+          } catch {
+            showMessage(
+              userMessage,
+              "Usuário salvo, mas falhou ao alterar permissão.",
+              "error",
+            );
+            return;
+          }
+        }
+
+        clearMessage(userMessage);
+        showMessage(userMessage, userId ? "Usuário atualizado." : "Usuário criado.", "success");
+        setTimeout(() => window.location.assign("/users"), 1500);
       } else {
-        // Exibir mensagem de erro da API
         showMessage(userMessage, body.message || "Erro ao salvar o usuário.", "error");
       }
     } catch (error) {
@@ -469,6 +529,9 @@ const initializeUserForm = async () => {
       cancelLink.classList.remove("disabled");
       userName.disabled = false;
       userEmail.disabled = false;
+      if (userRole && !userRole.title) {
+        userRole.disabled = false;
+      }
     }
   });
 };
