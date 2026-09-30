@@ -43,15 +43,15 @@ const paymentRepository =
   process.env.PAYMENT_REPOSITORY === "memory"
     ? new InMemoryPaymentRepository()
     : new PostgresPaymentRepository(pool);
-const paymentService = new PaymentService(paymentRepository);
+const rabbitMqProducer = new RabbitMqProducer();
+const emailProducer = new EmailProducer(rabbitMqProducer);
+const paymentService = new PaymentService(paymentRepository, rabbitMqProducer);
 const paymentController = new PaymentController(paymentService);
 
 const passwordService = new PasswordService();
 const tokenService = new TokenService();
 const tokenBlacklist = new TokenBlacklistService();
 const passwordResetService = new PasswordResetService(pool, userService);
-const rabbitMqProducer = new RabbitMqProducer();
-const emailProducer = new EmailProducer(rabbitMqProducer);
 
 let emailConsumer: EmailConsumer | null = null;
 try {

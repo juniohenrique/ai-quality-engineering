@@ -83,6 +83,20 @@ export class PostgresPaymentRepository implements PaymentRepository {
     }
   }
 
+  /**
+   * Persists a status change for an existing payment.
+   *
+   * Only the `status` column is mutable after creation; `idempotency_key`,
+   * `user_id`, `amount` and `currency` are immutable and must not be updated
+   * here.
+   */
+  async update(payment: Payment): Promise<void> {
+    await this.pool.query("UPDATE payments SET status = $1 WHERE id = $2", [
+      payment.status,
+      payment.id,
+    ]);
+  }
+
   private toPayment(row: PaymentRow): Payment {
     return new Payment({
       id: row.id,
