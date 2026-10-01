@@ -1,13 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PaymentRepository } from "../../../src/repositories/payment.repository.js";
-import { PaymentService } from "../../../src/services/payment.service.js";
-import { Payment } from "../../../src/domain/payment.js";
+import { PaymentService, PAYMENT_EVENTS_QUEUE } from "../../../src/services/payment.service.js";
+import { Payment, InvalidStatusTransitionError } from "../../../src/domain/payment.js";
+import type { RabbitMqProducer } from "../../../src/queue/producer.js";
 
 function createRepository(): PaymentRepository {
   return {
     findById: vi.fn(),
     findByIdempotencyKey: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
   };
 }
 
@@ -136,5 +138,125 @@ describe("PaymentService", () => {
 
     await expect(service.findPaymentById("pay-2")).resolves.toBe(payment);
     expect(repo.findById).toHaveBeenCalledWith("pay-2");
+  });
+});
+
+describe("transitionStatus", () => {
+  it("returns undefined when payment does not exist", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.findById).mockResolvedValue(undefined);
+    const service = new PaymentService(repo);
+
+    const result = await service.transitionStatus("non-existent-id", "processing");
+
+    expect(result).toBeUndefined();
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it("transitions pending → processing and persists", async () => {
+    const repo = createRepository();
+    const payment = new Payment({
+      id: "pay-1",
+      idempotencyKey: "key-1",
+      userId: "user-1",
+      amount: 100,
+      currency: "BRL",
+      status: "pending",
+      createdAt: new Date(),
+    });
+    vi.mocked(repo.findById).mockResolvedValue(payment);
+    vi.mocked(repo.update).mockResolvedValue(undefined);
+    const service = new PaymentService(repo);
+
+    const result = await service.transitionStatus("pay-1", "processing");
+
+    expect(result).toBeDefined();
+    expect(result!.id).toBe("pay-1");
+    expect(result!.status).toBe("processing");
+    expect(repo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "pay-1", status: "processing" }),
+    );
+  });
+
+  it("throws InvalidStatusTransitionError on invalid transition", async () => {
+    const repo = createRepository();
+    const payment = new Payment({
+      id: "pay-1",
+      idempotencyKey: "key-1",
+      userId: "user-1",
+      amount: 100,
+      currency: "BRL",
+      status: "pending",
+      createdAt: new Date(),
+    });
+    vi.mocked(repo.findById).mockResolvedValue(payment);
+    const service = new PaymentService(repo);
+
+    await expect(service.transitionStatus("pay-1", "completed")).rejects.toThrow(
+      InvalidStatusTransitionError,
+    );
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it("publishes payment-events on successful transition", async () => {
+    const repo = createRepository();
+    const payment = new Payment({
+      id: "pay-1",
+      idempotencyKey: "key-1",
+      userId: "user-1",
+      amount: 100,
+      currency: "BRL",
+      status: "pending",
+      createdAt: new Date(),
+    });
+    vi.mocked(repo.findById).mockResolvedValue(payment);
+    vi.mocked(repo.update).mockResolvedValue(undefined);
+
+    const producer: Pick<RabbitMqProducer, "publish"> = {
+      publish: vi.fn().mockResolvedValue("correlation-id-123"),
+    };
+    const service = new PaymentService(repo, producer as unknown as RabbitMqProducer);
+
+    const result = await service.transitionStatus("pay-1", "processing", {
+      correlationId: "correlation-id-123",
+    });
+
+    expect(result).toBeDefined();
+    expect(result!.status).toBe("processing");
+    expect(producer.publish).toHaveBeenCalledTimes(1);
+    expect(producer.publish).toHaveBeenCalledWith(
+      PAYMENT_EVENTS_QUEUE,
+      expect.objectContaining({
+        type: "payment.status-changed",
+        paymentId: "pay-1",
+        fromStatus: "pending",
+        toStatus: "processing",
+        correlationId: "correlation-id-123",
+      }),
+    );
+  });
+
+  it("does not publish when producer is undefined", async () => {
+    const repo = createRepository();
+    const payment = new Payment({
+      id: "pay-1",
+      idempotencyKey: "key-1",
+      userId: "user-1",
+      amount: 100,
+      currency: "BRL",
+      status: "pending",
+      createdAt: new Date(),
+    });
+    vi.mocked(repo.findById).mockResolvedValue(payment);
+    vi.mocked(repo.update).mockResolvedValue(undefined);
+    const service = new PaymentService(repo);
+
+    const result = await service.transitionStatus("pay-1", "processing");
+
+    expect(result).toBeDefined();
+    expect(result!.status).toBe("processing");
+    expect(repo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "pay-1", status: "processing" }),
+    );
   });
 });

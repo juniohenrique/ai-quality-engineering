@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import bcrypt from "bcrypt";
 import { randomUUID } from "node:crypto";
 import { closeDatabase, resetDatabase, testDatabase } from "../setup/db.js";
 import { Payment } from "../../src/domain/payment.js";
@@ -11,7 +12,8 @@ import { isUniqueViolation } from "../../src/utils/postgres-errors.js";
 
 const port = 3300 + Math.floor(Math.random() * 1000);
 const baseUrl = `http://127.0.0.1:${port}`;
-const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
+
+let adminToken = "";
 
 // Simple client for payments
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,13 +32,39 @@ async function waitForServer(timeoutMs = 10000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      await request("/health");
-      return;
+      const response = await fetch(`${baseUrl}/health`);
+      if (response.status === 200 || response.status === 503) {
+        return;
+      }
     } catch {
-      await new Promise((r) => setTimeout(r, 100));
+      // server not ready yet — keep retrying
     }
+    await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error("Server did not start");
+}
+
+async function seedAdminAndLogin(): Promise<string> {
+  const hash = await bcrypt.hash("admin-test-12345", 12);
+  await testDatabase.query(
+    "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
+    [
+      "00000000-0000-0000-0000-000000000099",
+      "admin-payments@example.com",
+      "Admin Payments",
+      hash,
+      "admin",
+    ],
+  );
+  const login = await request("/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      email: "admin-payments@example.com",
+      password: "admin-test-12345",
+    }),
+  });
+  return (login.body as { accessToken: string }).accessToken;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,19 +73,9 @@ async function waitForServer(timeoutMs = 10000): Promise<void> {
 
 beforeAll(async () => {
   process.env.PORT = String(port);
-  process.env.DATABASE_URL = runDatabaseIntegration
-    ? (process.env.DATABASE_URL_TEST ?? "postgres://postgres:postgres@localhost:5433/quality_test")
-    : "postgresql://127.0.0.1:1/unavailable";
-
-  if (!runDatabaseIntegration) {
-    process.env.USER_REPOSITORY = "memory";
-    process.env.PAYMENT_REPOSITORY = "memory";
-  }
-
-  if (runDatabaseIntegration) {
-    await resetDatabase();
-  }
-
+  process.env.DATABASE_URL =
+    process.env.DATABASE_URL_TEST ?? "postgres://postgres:postgres@localhost:5433/quality_test";
+  process.env.RUN_DB_INTEGRATION = "true";
   await import("../../src/server.js");
   await waitForServer();
 }, 15000);
@@ -65,15 +83,12 @@ beforeAll(async () => {
 afterAll(async () => {
   process.emit("SIGTERM");
   await new Promise((r) => setTimeout(r, 50));
-  if (runDatabaseIntegration) {
-    await closeDatabase();
-  }
+  await closeDatabase();
 });
 
 beforeEach(async () => {
-  if (runDatabaseIntegration) {
-    await resetDatabase();
-  }
+  await resetDatabase();
+  adminToken = await seedAdminAndLogin();
 });
 
 describe("POST /payments — idempotency", () => {
@@ -90,13 +105,19 @@ describe("POST /payments — idempotency", () => {
     const first = await request("/payments", {
       method: "POST",
       body: JSON.stringify(validPayload({ idempotencyKey: "idem-key-1" })),
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${adminToken}`,
+      },
     });
 
     const second = await request("/payments", {
       method: "POST",
       body: JSON.stringify(validPayload({ idempotencyKey: "idem-key-1", amount: 999 })),
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${adminToken}`,
+      },
     });
 
     expect(first.status).toBe(201);
@@ -113,13 +134,19 @@ describe("POST /payments — idempotency", () => {
     const first = await request("/payments", {
       method: "POST",
       body: JSON.stringify(validPayload({ idempotencyKey: "idem-key-2" })),
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${adminToken}`,
+      },
     });
 
     const second = await request("/payments", {
       method: "POST",
       body: JSON.stringify(validPayload({ idempotencyKey: "idem-key-3", status: "completed" })),
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${adminToken}`,
+      },
     });
 
     expect(first.status).toBe(201);
@@ -134,7 +161,10 @@ describe("POST /payments — idempotency", () => {
         request("/payments", {
           method: "POST",
           body: JSON.stringify(validPayload({ idempotencyKey: key })),
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${adminToken}`,
+          },
         }),
       ),
     );
@@ -150,9 +180,7 @@ describe("POST /payments — idempotency", () => {
 // Database-level integration tests (real PostgreSQL)
 // ---------------------------------------------------------------------------
 
-const describeDatabase = runDatabaseIntegration ? describe : describe.skip;
-
-describeDatabase("PaymentService idempotency with PostgreSQL", () => {
+describe("PaymentService idempotency with PostgreSQL", () => {
   let repository: PostgresPaymentRepository;
   let service: PaymentService;
 

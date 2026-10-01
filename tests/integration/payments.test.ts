@@ -1,7 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import bcrypt from "bcrypt";
+import { closeDatabase, resetDatabase, testDatabase } from "../setup/db.js";
 
 const port = 3200 + Math.floor(Math.random() * 1000);
 const baseUrl = `http://127.0.0.1:${port}`;
+
+let adminToken = "";
 
 // Simple client for payments
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,33 +24,69 @@ async function waitForServer(timeoutMs = 10000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      await request("/health");
-      return;
+      const response = await fetch(`${baseUrl}/health`);
+      if (response.status === 200 || response.status === 503) {
+        return;
+      }
     } catch {
-      await new Promise((r) => setTimeout(r, 100));
+      // server not ready yet — keep retrying
     }
+    await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error("Server did not start");
 }
 
+async function seedAdminAndLogin(): Promise<string> {
+  const hash = await bcrypt.hash("admin-test-12345", 12);
+  await testDatabase.query(
+    "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
+    [
+      "00000000-0000-0000-0000-000000000099",
+      "admin-payments@example.com",
+      "Admin Payments",
+      hash,
+      "admin",
+    ],
+  );
+  const login = await request("/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      email: "admin-payments@example.com",
+      password: "admin-test-12345",
+    }),
+  });
+  return (login.body as { accessToken: string }).accessToken;
+}
+
 beforeAll(async () => {
   process.env.PORT = String(port);
-  process.env.DATABASE_URL = "postgresql://127.0.0.1:1/unavailable";
-  process.env.USER_REPOSITORY = "memory";
-  process.env.PAYMENT_REPOSITORY = "memory";
+  process.env.DATABASE_URL =
+    process.env.DATABASE_URL_TEST ?? "postgres://postgres:postgres@localhost:5433/quality_test";
+  process.env.RUN_DB_INTEGRATION = "true";
   await import("../../src/server.js");
   await waitForServer();
+});
+
+beforeEach(async () => {
+  await resetDatabase();
+  adminToken = await seedAdminAndLogin();
 });
 
 afterAll(async () => {
   process.emit("SIGTERM");
   await new Promise((r) => setTimeout(r, 50));
+  await closeDatabase();
 });
 
 describe("POST /payments", () => {
   it("creates payment successfully", async () => {
     const res = await request("/payments", {
       method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${adminToken}`,
+      },
       body: JSON.stringify({
         idempotencyKey: "key-123",
         userId: "user-1",
@@ -63,6 +103,10 @@ describe("POST /payments", () => {
   it("rejects negative amount", async () => {
     const res = await request("/payments", {
       method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${adminToken}`,
+      },
       body: JSON.stringify({
         idempotencyKey: "key-124",
         userId: "user-1",
@@ -77,6 +121,10 @@ describe("POST /payments", () => {
   it("rejects invalid currency", async () => {
     const res = await request("/payments", {
       method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${adminToken}`,
+      },
       body: JSON.stringify({
         idempotencyKey: "key-125",
         userId: "user-1",
@@ -91,6 +139,10 @@ describe("POST /payments", () => {
   it("rejects missing idempotencyKey", async () => {
     const res = await request("/payments", {
       method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${adminToken}`,
+      },
       body: JSON.stringify({
         userId: "user-1",
         amount: 10,
