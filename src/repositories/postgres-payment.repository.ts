@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
-import type { PaymentRepository } from "./payment.repository.js";
-import { Payment } from "../domain/payment.js";
+import type { PaymentRepository, PaymentFilters, PaymentPage } from "./payment.repository.js";
+import { Payment, type PaymentStatus } from "../domain/payment.js";
 import { isUniqueViolation } from "../utils/postgres-errors.js";
 
 interface PaymentRow {
@@ -35,7 +35,7 @@ export class PostgresPaymentRepository implements PaymentRepository {
 
   async findById(id: string): Promise<Payment | undefined> {
     const result = await this.pool.query<PaymentRow>("SELECT * FROM payments WHERE id = $1", [id]);
-    return result.rows[0] ? this.toPayment(result.rows[0]) : undefined;
+    return result.rows[0] ? rowToPayment(result.rows[0]) : undefined;
   }
 
   async findByIdempotencyKey(key: string): Promise<Payment | undefined> {
@@ -43,7 +43,55 @@ export class PostgresPaymentRepository implements PaymentRepository {
       "SELECT * FROM payments WHERE idempotency_key = $1",
       [key],
     );
-    return result.rows[0] ? this.toPayment(result.rows[0]) : undefined;
+    return result.rows[0] ? rowToPayment(result.rows[0]) : undefined;
+  }
+
+  async findMany(filters: PaymentFilters): Promise<PaymentPage> {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+    if (filters.userId) {
+      conditions.push(`user_id = $${idx++}`);
+      params.push(filters.userId);
+    }
+    if (filters.status) {
+      conditions.push(`status = $${idx++}`);
+      params.push(filters.status);
+    }
+    if (filters.minAmount !== undefined) {
+      conditions.push(`amount >= $${idx++}`);
+      params.push(filters.minAmount);
+    }
+    if (filters.maxAmount !== undefined) {
+      conditions.push(`amount <= $${idx++}`);
+      params.push(filters.maxAmount);
+    }
+    if (filters.from) {
+      conditions.push(`created_at >= $${idx++}`);
+      params.push(filters.from);
+    }
+    if (filters.to) {
+      conditions.push(`created_at <= $${idx++}`);
+      params.push(filters.to);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const countResult = await this.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM payments ${where}`,
+      params,
+    );
+    const itemsResult = await this.pool.query<PaymentRow>(
+      `SELECT id, idempotency_key AS "idempotencyKey",
+              user_id AS "userId", amount, currency, status,
+              created_at AS "createdAt"
+       FROM payments ${where}
+       ORDER BY created_at DESC
+       LIMIT $${idx++} OFFSET $${idx++}`,
+      [...params, filters.limit, filters.offset],
+    );
+    return {
+      items: itemsResult.rows.map((row) => rowToPayment(row)),
+      total: Number(countResult.rows[0]?.count ?? 0),
+    };
   }
 
   /**
@@ -96,16 +144,16 @@ export class PostgresPaymentRepository implements PaymentRepository {
       payment.id,
     ]);
   }
+}
 
-  private toPayment(row: PaymentRow): Payment {
-    return new Payment({
-      id: row.id,
-      idempotencyKey: row.idempotency_key,
-      userId: row.user_id,
-      amount: Number(row.amount),
-      currency: row.currency,
-      status: row.status as unknown as "pending" | "completed" | "failed",
-      createdAt: row.created_at,
-    });
-  }
+function rowToPayment(row: PaymentRow): Payment {
+  return new Payment({
+    id: row.id,
+    idempotencyKey: row.idempotency_key,
+    userId: row.user_id,
+    amount: Number(row.amount),
+    currency: row.currency,
+    status: row.status as PaymentStatus,
+    createdAt: row.created_at,
+  });
 }

@@ -1,4 +1,4 @@
-import type { PaymentRepository } from "./payment.repository.js";
+import type { PaymentRepository, PaymentFilters, PaymentPage } from "./payment.repository.js";
 import { Payment } from "../domain/payment.js";
 
 export class InMemoryPaymentRepository implements PaymentRepository {
@@ -21,5 +21,22 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     if (index >= 0) {
       this.payments[index] = payment;
     }
+  }
+
+  async findMany(filters: PaymentFilters): Promise<PaymentPage> {
+    const filtered = this.payments.filter((p) => {
+      if (filters.userId && p.userId !== filters.userId) return false;
+      if (filters.status && p.status !== filters.status) return false;
+      if (filters.minAmount !== undefined && p.amount < filters.minAmount) return false;
+      if (filters.maxAmount !== undefined && p.amount > filters.maxAmount) return false;
+      if (filters.from && p.createdAt < filters.from) return false;
+      if (filters.to && p.createdAt > filters.to) return false;
+      return true;
+    });
+    const sorted = [...filtered].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return {
+      items: sorted.slice(filters.offset, filters.offset + filters.limit),
+      total: filtered.length,
+    };
   }
 }
