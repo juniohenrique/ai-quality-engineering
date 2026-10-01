@@ -80,10 +80,7 @@ export class PostgresPaymentRepository implements PaymentRepository {
       params,
     );
     const itemsResult = await this.pool.query<PaymentRow>(
-      `SELECT id, idempotency_key AS "idempotencyKey",
-              user_id AS "userId", amount, currency, status,
-              created_at AS "createdAt"
-       FROM payments ${where}
+      `SELECT * FROM payments ${where}
        ORDER BY created_at DESC
        LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, filters.limit, filters.offset],

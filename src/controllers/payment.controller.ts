@@ -223,26 +223,35 @@ export class PaymentController {
       return;
     }
 
-    const page = await this.service.listPayments(parsed.value, {
-      userId: context.userId,
-      role: context.role,
-    });
+    try {
+      const page = await this.service.listPayments(parsed.value, {
+        userId: context.userId,
+        role: context.role,
+      });
 
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(
-      JSON.stringify({
-        items: page.items.map((p) => ({
-          id: p.id,
-          userId: p.userId,
-          amount: p.amount,
-          currency: p.currency,
-          status: p.status,
-          createdAt: p.createdAt.toISOString(),
-        })),
-        total: page.total,
-        limit: parsed.value.limit ?? 20,
-        offset: parsed.value.offset ?? 0,
-      }),
-    );
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          items: page.items.map((p) => ({
+            id: p.id,
+            userId: p.userId,
+            amount: p.amount,
+            currency: p.currency,
+            status: p.status,
+            createdAt: p.createdAt.toISOString(),
+          })),
+          total: page.total,
+          limit: parsed.value.limit ?? 20,
+          offset: parsed.value.offset ?? 0,
+        }),
+      );
+    } catch (error) {
+      writeErrorResponse(
+        response,
+        500,
+        "internal_error",
+        error instanceof Error ? error.message : "Unexpected error",
+      );
+    }
   }
 }
