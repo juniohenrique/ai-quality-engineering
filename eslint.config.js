@@ -21,6 +21,7 @@ export default [
         fetch: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
+        URLSearchParams: "readonly",
       },
     },
     plugins: {

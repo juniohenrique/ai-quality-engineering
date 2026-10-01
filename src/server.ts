@@ -242,6 +242,12 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (requestUrl.pathname === "/payments" && request.method === "GET") {
+    const ctx = authenticate(request);
+    await paymentController.handleList(ctx, requestUrl.searchParams, response);
+    return;
+  }
+
   if (requestUrl.pathname === "/payments") {
     if (request.method === "POST") {
       try {
