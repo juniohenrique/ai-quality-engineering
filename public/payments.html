@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pagamentos | AI Quality Engineering</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/payments.css" />
+  </head>
+  <body>
+    <main class="page-container">
+      <header class="page-header">
+        <h1>Pagamentos</h1>
+      </header>
+
+      <form class="filters-bar" data-testid="payments-filters">
+        <label>
+          Status
+          <select data-testid="filter-status" name="status">
+            <option value="">Todos</option>
+            <option value="pending">Pendente</option>
+            <option value="processing">Processando</option>
+            <option value="completed">Concluído</option>
+            <option value="failed">Falhou</option>
+            <option value="refunded">Reembolsado</option>
+          </select>
+        </label>
+
+        <label>
+          Valor mínimo
+          <input data-testid="filter-min-amount" name="minAmount" type="number" min="0" step="1" />
+        </label>
+
+        <label>
+          Valor máximo
+          <input data-testid="filter-max-amount" name="maxAmount" type="number" min="0" step="1" />
+        </label>
+
+        <button data-testid="filter-submit" type="submit" class="btn-primary">Filtrar</button>
+        <button data-testid="filter-clear" type="button" class="btn-secondary">Limpar</button>
+      </form>
+
+      <p class="message" data-testid="payments-message" role="status" aria-live="polite"></p>
+
+      <div class="table-card">
+        <table class="payments-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Usuário</th>
+              <th>Valor</th>
+              <th>Status</th>
+              <th>Criado em</th>
+            </tr>
+          </thead>
+          <tbody data-testid="payments-list"></tbody>
+        </table>
+      </div>
+
+      <p class="pagination-info" data-testid="payments-pagination"></p>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
