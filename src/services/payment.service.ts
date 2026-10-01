@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { Payment } from "../domain/payment.js";
+import { Payment, type PaymentStatus } from "../domain/payment.js";
 import type { CreatePaymentDTO } from "../dto/create-payment.dto.js";
 import type { PaymentRepository } from "../repositories/payment.repository.js";
 import { isUniqueViolation } from "../utils/postgres-errors.js";
+import type { RabbitMqProducer } from "../queue/producer.js";
+
+/** Queue name used to publish payment lifecycle events to consumers. */
+export const PAYMENT_EVENTS_QUEUE = "payment-events";
 
 /**
  * Optional, request-scoped context propagated from the queue consumer so the
@@ -15,7 +19,10 @@ export interface PaymentContext {
 }
 
 export class PaymentService {
-  constructor(private readonly repository: PaymentRepository) {}
+  constructor(
+    private readonly repository: PaymentRepository,
+    private readonly producer?: RabbitMqProducer,
+  ) {}
 
   /**
    * Creates a new payment while enforcing idempotency.
@@ -46,10 +53,8 @@ export class PaymentService {
    * @throws {Error} When the input is invalid and the {@link Payment}
    *   constructor rejects it, or when an unexpected database error occurs.
    */
-  async createPayment(
-    input: CreatePaymentDTO,
-    context?: PaymentContext,
-  ): Promise<Payment> {
+  async createPayment(input: CreatePaymentDTO, context?: PaymentContext): Promise<Payment> {
+    // context reservado para hook de events em createPayment — S06-14+
     void context;
     const idempotencyKey = input.idempotencyKey.trim();
     const userId = input.userId.trim();
@@ -95,5 +100,45 @@ export class PaymentService {
 
   async findPaymentById(id: string): Promise<Payment | undefined> {
     return this.repository.findById(id);
+  }
+
+  /**
+   * Transitions an existing payment to a new status, persists the change and
+   * publishes a `payment.status-changed` event when a producer is available.
+   *
+   * @param paymentId - The payment to transition.
+   * @param newStatus - The target status. Must be an allowed transition from
+   *   the current status, otherwise {@link InvalidStatusTransitionError} is
+   *   thrown by {@link Payment.transitionTo}.
+   * @param context - Optional request-scoped context (e.g. `correlationId`)
+   *   propagated to the published event for tracing.
+   * @returns The updated payment, or `undefined` when no payment matches the
+   *   given id.
+   * @throws {InvalidStatusTransitionError} when `newStatus` is not reachable
+   *   from the current status.
+   */
+  async transitionStatus(
+    paymentId: string,
+    newStatus: PaymentStatus,
+    context?: PaymentContext,
+  ): Promise<Payment | undefined> {
+    const payment = await this.repository.findById(paymentId);
+    if (!payment) return undefined;
+
+    const updated = payment.transitionTo(newStatus);
+    await this.repository.update(updated);
+
+    if (this.producer) {
+      await this.producer.publish(PAYMENT_EVENTS_QUEUE, {
+        type: "payment.status-changed",
+        paymentId: updated.id,
+        fromStatus: payment.status,
+        toStatus: updated.status,
+        occurredAt: new Date().toISOString(),
+        correlationId: context?.correlationId,
+      });
+    }
+
+    return updated;
   }
 }

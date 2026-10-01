@@ -1,10 +1,29 @@
+export type PaymentStatus = "pending" | "processing" | "completed" | "failed" | "refunded";
+
+export const ALLOWED_TRANSITIONS: Record<PaymentStatus, PaymentStatus[]> = {
+  pending: ["processing"],
+  processing: ["completed", "failed"],
+  completed: ["refunded"],
+  failed: [],
+  refunded: [],
+};
+
+export class InvalidStatusTransitionError extends Error {
+  constructor(from: PaymentStatus, to: PaymentStatus) {
+    super(`Cannot transition payment from "${from}" to "${to}"`);
+    this.name = "InvalidStatusTransitionError";
+  }
+}
+
+export const MAX_PAYMENT_AMOUNT = 999_999_999;
+
 export interface PaymentProperties {
   id: string;
   idempotencyKey: string;
   userId: string;
   amount: number;
   currency: string;
-  status: "pending" | "completed" | "failed";
+  status: PaymentStatus;
   createdAt: Date;
 }
 
@@ -14,7 +33,7 @@ export class Payment {
   readonly userId: string;
   readonly amount: number;
   readonly currency: string;
-  readonly status: "pending" | "completed" | "failed";
+  readonly status: PaymentStatus;
   readonly createdAt: Date;
 
   constructor(props: PaymentProperties) {
@@ -38,10 +57,20 @@ export class Payment {
     if (typeof amount !== "number" || Number.isNaN(amount) || amount <= 0) {
       throw new Error("Payment amount must be a positive number");
     }
+    if (amount > MAX_PAYMENT_AMOUNT) {
+      throw new Error("Payment amount exceeds maximum allowed value");
+    }
     if (!currency) {
       throw new Error("Payment currency is required");
     }
-    if (!["pending", "completed", "failed"].includes(status)) {
+    const validStatuses: PaymentStatus[] = [
+      "pending",
+      "processing",
+      "completed",
+      "failed",
+      "refunded",
+    ];
+    if (!validStatuses.includes(status)) {
       throw new Error("Payment status is invalid");
     }
 
@@ -50,7 +79,26 @@ export class Payment {
     this.userId = userId;
     this.amount = amount;
     this.currency = currency;
-    this.status = status as "pending" | "completed" | "failed";
+    this.status = status;
     this.createdAt = createdAt;
+  }
+
+  canTransitionTo(next: PaymentStatus): boolean {
+    return ALLOWED_TRANSITIONS[this.status].includes(next);
+  }
+
+  transitionTo(next: PaymentStatus): Payment {
+    if (!this.canTransitionTo(next)) {
+      throw new InvalidStatusTransitionError(this.status, next);
+    }
+    return new Payment({
+      id: this.id,
+      idempotencyKey: this.idempotencyKey,
+      userId: this.userId,
+      amount: this.amount,
+      currency: this.currency,
+      status: next,
+      createdAt: this.createdAt,
+    });
   }
 }

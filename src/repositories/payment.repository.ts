@@ -4,4 +4,5 @@ export interface PaymentRepository {
   findById(id: string): Promise<Payment | undefined>;
   findByIdempotencyKey(key: string): Promise<Payment | undefined>;
   create(payment: Payment): Promise<void>;
+  update(payment: Payment): Promise<void>;
 }

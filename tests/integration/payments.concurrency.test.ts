@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import bcrypt from "bcrypt";
 import { randomUUID } from "node:crypto";
 import { closeDatabase, resetDatabase, testDatabase } from "../setup/db.js";
 import { PostgresPaymentRepository } from "../../src/repositories/postgres-payment.repository.js";
@@ -6,7 +7,8 @@ import { PaymentService } from "../../src/services/payment.service.js";
 
 const port = 3500 + Math.floor(Math.random() * 1000);
 const baseUrl = `http://127.0.0.1:${port}`;
-const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === "true";
+
+let adminToken = "";
 
 // ---------------------------------------------------------------------------
 // Typed HTTP helper (no `any`)
@@ -62,42 +64,52 @@ async function waitForServer(timeoutMs = 10000): Promise<void> {
   throw new Error(`Server did not start within ${timeoutMs}ms`);
 }
 
+async function seedAdminAndLogin(): Promise<string> {
+  const hash = await bcrypt.hash("admin-test-12345", 10);
+  await testDatabase.query(
+    "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
+    [
+      "00000000-0000-0000-0000-000000000099",
+      "admin-payments@example.com",
+      "Admin Payments",
+      hash,
+      "admin",
+    ],
+  );
+  const login = await request<{ accessToken: string }>("/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      email: "admin-payments@example.com",
+      password: "admin-test-12345",
+    }),
+  });
+  return login.body!.accessToken;
+}
+
 // ---------------------------------------------------------------------------
 // HTTP-level integration tests
 // ---------------------------------------------------------------------------
 
 beforeAll(async () => {
   process.env.PORT = String(port);
-  process.env.DATABASE_URL = runDatabaseIntegration
-    ? (process.env.DATABASE_URL_TEST ?? "postgres://postgres:postgres@localhost:5433/quality_test")
-    : "postgresql://127.0.0.1:1/unavailable";
-
-  if (!runDatabaseIntegration) {
-    process.env.USER_REPOSITORY = "memory";
-    process.env.PAYMENT_REPOSITORY = "memory";
-  }
-
-  if (runDatabaseIntegration) {
-    await resetDatabase();
-  }
-
+  process.env.DATABASE_URL =
+    process.env.DATABASE_URL_TEST ?? "postgres://postgres:postgres@localhost:5433/quality_test";
+  process.env.RUN_DB_INTEGRATION = "true";
   await import("../../src/server.js");
   await waitForServer();
-}, 15000);
+}, 30000);
 
 afterAll(async () => {
   process.emit("SIGTERM");
   await new Promise((resolve) => setTimeout(resolve, 50));
-  if (runDatabaseIntegration) {
-    await closeDatabase();
-  }
+  await closeDatabase();
 });
 
 beforeEach(async () => {
-  if (runDatabaseIntegration) {
-    await resetDatabase();
-  }
-});
+  await resetDatabase();
+  adminToken = await seedAdminAndLogin();
+}, 30000);
 
 describe("POST /payments — S04-10 concurrency (100 simultaneous requests)", () => {
   const CONCURRENT_REQUESTS = 100;
@@ -119,7 +131,10 @@ describe("POST /payments — S04-10 concurrency (100 simultaneous requests)", ()
         request<PaymentResponse>("/payments", {
           method: "POST",
           body: JSON.stringify(buildPayload(key)),
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${adminToken}`,
+          },
         }),
       ),
     );
@@ -136,15 +151,13 @@ describe("POST /payments — S04-10 concurrency (100 simultaneous requests)", ()
     expect(paymentIds.size).toBe(1);
 
     // Only one charge must exist at the database level.
-    if (runDatabaseIntegration) {
-      const result = await testDatabase.query<{ count: string }>(
-        "SELECT COUNT(*) FROM payments WHERE idempotency_key = $1",
-        [key],
-      );
-      const row = result.rows[0];
-      expect(row).toBeDefined();
-      expect(parseInt(row!.count, 10)).toBe(1);
-    }
+    const result = await testDatabase.query<{ count: string }>(
+      "SELECT COUNT(*) FROM payments WHERE idempotency_key = $1",
+      [key],
+    );
+    const row = result.rows[0];
+    expect(row).toBeDefined();
+    expect(parseInt(row!.count, 10)).toBe(1);
 
     console.log(
       `S04-10 concurrency: ${CONCURRENT_REQUESTS} requests in ${durationMs.toFixed(2)}ms (${(durationMs / 1000).toFixed(2)}s) | 1 payment recorded | 0 server errors`,
@@ -163,7 +176,10 @@ describe("POST /payments — S04-10 concurrency (100 simultaneous requests)", ()
           request<PaymentResponse>("/payments", {
             method: "POST",
             body: JSON.stringify(buildPayload(key)),
-            headers: { "content-type": "application/json" },
+            headers: {
+              "content-type": "application/json",
+              authorization: `Bearer ${adminToken}`,
+            },
           }),
         ),
       );
@@ -175,15 +191,13 @@ describe("POST /payments — S04-10 concurrency (100 simultaneous requests)", ()
       const paymentIds = new Set(responses.map((response) => response.body?.id));
       expect(paymentIds.size).toBe(1);
 
-      if (runDatabaseIntegration) {
-        const result = await testDatabase.query<{ count: string }>(
-          "SELECT COUNT(*) FROM payments WHERE idempotency_key = $1",
-          [key],
-        );
-        const row = result.rows[0];
-        expect(row).toBeDefined();
-        expect(parseInt(row!.count, 10)).toBe(1);
-      }
+      const result = await testDatabase.query<{ count: string }>(
+        "SELECT COUNT(*) FROM payments WHERE idempotency_key = $1",
+        [key],
+      );
+      const row = result.rows[0];
+      expect(row).toBeDefined();
+      expect(parseInt(row!.count, 10)).toBe(1);
 
       console.log(
         `run ${run + 1}/${bursts}: ${CONCURRENT_REQUESTS} requests in ${durationMs.toFixed(2)}ms | 1 payment | 0 errors`,
@@ -196,9 +210,7 @@ describe("POST /payments — S04-10 concurrency (100 simultaneous requests)", ()
 // Database-level integration tests (real PostgreSQL)
 // ---------------------------------------------------------------------------
 
-const describeDatabase = runDatabaseIntegration ? describe : describe.skip;
-
-describeDatabase("PaymentService absorbs a 100-way race on a single idempotency key", () => {
+describe("PaymentService absorbs a 100-way race on a single idempotency key", () => {
   let repository: PostgresPaymentRepository;
   let service: PaymentService;
 

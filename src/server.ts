@@ -43,15 +43,15 @@ const paymentRepository =
   process.env.PAYMENT_REPOSITORY === "memory"
     ? new InMemoryPaymentRepository()
     : new PostgresPaymentRepository(pool);
-const paymentService = new PaymentService(paymentRepository);
+const rabbitMqProducer = new RabbitMqProducer();
+const emailProducer = new EmailProducer(rabbitMqProducer);
+const paymentService = new PaymentService(paymentRepository, rabbitMqProducer);
 const paymentController = new PaymentController(paymentService);
 
 const passwordService = new PasswordService();
 const tokenService = new TokenService();
 const tokenBlacklist = new TokenBlacklistService();
 const passwordResetService = new PasswordResetService(pool, userService);
-const rabbitMqProducer = new RabbitMqProducer();
-const emailProducer = new EmailProducer(rabbitMqProducer);
 
 let emailConsumer: EmailConsumer | null = null;
 try {
@@ -225,11 +225,29 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  const paymentStatusMatch = requestUrl.pathname.match(/^\/payments\/([^/]+)\/status$/);
+  if (paymentStatusMatch && request.method === "PATCH") {
+    const [, paymentId] = paymentStatusMatch;
+    if (paymentId === undefined) {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+      return;
+    }
+    const ctx = authenticate(request);
+    try {
+      const body = await readRequestBody(request);
+      await paymentController.handleTransitionStatus(ctx, paymentId, JSON.parse(body), response);
+    } catch {
+      writeErrorResponse(response, 400, "invalid_request", "Invalid request");
+    }
+    return;
+  }
+
   if (requestUrl.pathname === "/payments") {
     if (request.method === "POST") {
       try {
         const body = await readRequestBody(request);
-        await paymentController.handleCreate(JSON.parse(body), response);
+        const ctx = authenticate(request);
+        await paymentController.handleCreate(ctx, JSON.parse(body), response);
       } catch {
         writeErrorResponse(response, 400, "invalid_request", "Invalid request");
       }
