@@ -537,3 +537,136 @@ const initializeUserForm = async () => {
 };
 
 initializeUserForm();
+
+// ======================== TELA DE PAYMENTS ========================
+
+const paymentsList = document.querySelector('[data-testid="payments-list"]');
+
+if (paymentsList && !requireAuth()) {
+  /* redirecionado para /login.html */
+} else if (paymentsList) {
+  const paymentsMessage = document.querySelector('[data-testid="payments-message"]');
+  const paymentsPagination = document.querySelector('[data-testid="payments-pagination"]');
+  const filtersForm = document.querySelector('[data-testid="payments-filters"]');
+  const filterStatus = document.querySelector('[data-testid="filter-status"]');
+  const filterMinAmount = document.querySelector('[data-testid="filter-min-amount"]');
+  const filterMaxAmount = document.querySelector('[data-testid="filter-max-amount"]');
+  const clearButton = document.querySelector('[data-testid="filter-clear"]');
+  const submitButton = document.querySelector('[data-testid="filter-submit"]');
+
+  // Formata valor — amount é unidade inteira (1000 = R$ 1.000,00)
+  const formatAmount = (amount, currency) => {
+    try {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency,
+      }).format(amount);
+    } catch {
+      return `${currency} ${amount}`;
+    }
+  };
+
+  // Formata data ISO → pt-BR
+  const formatDate = (iso) => new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  // Cria <span class="payment-status payment-status--{status}">
+  const createStatusBadge = (status) => {
+    const span = document.createElement("span");
+    span.className = `payment-status payment-status--${status}`;
+    span.textContent = status;
+    return span;
+  };
+
+  // Monta a linha da tabela
+  const buildRow = (payment) => {
+    const row = document.createElement("tr");
+    row.dataset.testid = "payment-row";
+    row.dataset.paymentId = payment.id;
+
+    const idCell = document.createElement("td");
+    idCell.textContent = payment.id.slice(0, 8); // encurta o UUID
+    idCell.title = payment.id;
+
+    const userCell = document.createElement("td");
+    userCell.textContent = payment.userId.slice(0, 8);
+
+    const amountCell = document.createElement("td");
+    amountCell.textContent = formatAmount(payment.amount, payment.currency);
+
+    const statusCell = document.createElement("td");
+    statusCell.append(createStatusBadge(payment.status));
+
+    const dateCell = document.createElement("td");
+    dateCell.textContent = formatDate(payment.createdAt);
+
+    row.append(idCell, userCell, amountCell, statusCell, dateCell);
+    return row;
+  };
+
+  // Lê filtros do form e monta URLSearchParams
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+    if (filterStatus.value) params.set("status", filterStatus.value);
+    if (filterMinAmount.value) params.set("minAmount", filterMinAmount.value);
+    if (filterMaxAmount.value) params.set("maxAmount", filterMaxAmount.value);
+    return params.toString();
+  };
+
+  // Carrega a lista
+  const loadPayments = async () => {
+    clearMessage(paymentsMessage);
+    paymentsList.replaceChildren(); // limpa
+    paymentsPagination.textContent = "";
+
+    const qs = buildQueryString();
+    const path = qs ? `/payments?${qs}` : "/payments";
+
+    setLoading(submitButton, true, "Carregando...");
+
+    try {
+      const { response, body } = await fetchWithAuth(path);
+      if (!response.ok) {
+        showMessage(paymentsMessage, "Não foi possível carregar os pagamentos.", "error");
+        return;
+      }
+
+      if (body.items.length === 0) {
+        const emptyRow = document.createElement("tr");
+        const emptyCell = document.createElement("td");
+        emptyCell.colSpan = 5;
+        emptyCell.className = "empty-state";
+        emptyCell.textContent = "Nenhum pagamento encontrado.";
+        emptyRow.append(emptyCell);
+        paymentsList.append(emptyRow);
+      } else {
+        paymentsList.replaceChildren(...body.items.map(buildRow));
+      }
+
+      paymentsPagination.textContent =
+        `Mostrando ${body.items.length} de ${body.total} pagamentos`;
+    } catch {
+      showMessage(paymentsMessage, "Erro de conexão. Tente novamente.", "error");
+    } finally {
+      setLoading(submitButton, false);
+    }
+  };
+
+  // Submit dos filtros
+  filtersForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void loadPayments();
+  });
+
+  // Limpar filtros
+  clearButton.addEventListener("click", () => {
+    filterStatus.value = "";
+    filterMinAmount.value = "";
+    filterMaxAmount.value = "";
+    void loadPayments();
+  });
+
+  void loadPayments();
+}
