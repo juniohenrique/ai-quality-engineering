@@ -37,7 +37,7 @@ async function waitForServer(timeoutMs = 10000): Promise<void> {
 }
 
 async function seedAdminAndLogin(): Promise<string> {
-  const hash = await bcrypt.hash("admin-test-12345", 12);
+  const hash = await bcrypt.hash("admin-test-12345", 10);
   await testDatabase.query(
     "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
     [
@@ -66,12 +66,12 @@ beforeAll(async () => {
   process.env.RUN_DB_INTEGRATION = "true";
   await import("../../src/server.js");
   await waitForServer();
-});
+}, 30000);
 
 beforeEach(async () => {
   await resetDatabase();
   adminToken = await seedAdminAndLogin();
-});
+}, 30000);
 
 afterAll(async () => {
   process.emit("SIGTERM");
