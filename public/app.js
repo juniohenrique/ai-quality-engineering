@@ -670,3 +670,103 @@ if (paymentsList && !requireAuth()) {
 
   void loadPayments();
 }
+
+// ======================== TELA DE DASHBOARD ========================
+
+const dashboardUsersTotal = document.querySelector('[data-testid="dashboard-users-total"]');
+
+if (dashboardUsersTotal && !requireAuth()) {
+  /* redirecionado para /login.html */
+} else if (dashboardUsersTotal) {
+  const dashboardMessage = document.querySelector('[data-testid="dashboard-message"]');
+  const usersAdmin = document.querySelector('[data-testid="dashboard-users-admin"]');
+  const usersUser = document.querySelector('[data-testid="dashboard-users-user"]');
+  const paymentsTotal = document.querySelector('[data-testid="dashboard-payments-total"]');
+  const paymentsByStatus = document.querySelector('[data-testid="dashboard-payments-by-status"]');
+  const recentList = document.querySelector('[data-testid="dashboard-recent-list"]');
+
+  const statusLabels = {
+    pending: "Pendente",
+    processing: "Processando",
+    completed: "Concluído",
+    failed: "Falhou",
+    refunded: "Reembolsado",
+  };
+
+  const createStatusBadge = (status) => {
+    const span = document.createElement("span");
+    span.className = `payment-status payment-status--${status}`;
+    span.textContent = statusLabels[status] ?? status;
+    return span;
+  };
+
+  const buildRecentRow = (payment) => {
+    const row = document.createElement("tr");
+    row.dataset.testid = "dashboard-recent-row";
+
+    const idCell = document.createElement("td");
+    idCell.textContent = payment.id.slice(0, 8);
+    idCell.title = payment.id;
+
+    const amountCell = document.createElement("td");
+    amountCell.textContent = new Intl.NumberFormat("pt-BR", {
+      style: "currency", currency: payment.currency,
+    }).format(payment.amount);
+
+    const statusCell = document.createElement("td");
+    statusCell.append(createStatusBadge(payment.status));
+
+    const dateCell = document.createElement("td");
+    dateCell.textContent = new Date(payment.createdAt).toLocaleString("pt-BR");
+
+    row.append(idCell, amountCell, statusCell, dateCell);
+    return row;
+  };
+
+  const loadDashboard = async () => {
+    clearMessage(dashboardMessage);
+
+    try {
+      const { response, body } = await fetchWithAuth("/admin/dashboard");
+      if (!response.ok) {
+        const msg = response.status === 403
+          ? "Acesso restrito a administradores."
+          : "Não foi possível carregar o dashboard.";
+        showMessage(dashboardMessage, msg, "error");
+        return;
+      }
+
+      dashboardUsersTotal.textContent = body.users.total;
+      usersAdmin.textContent = body.users.byRole.admin;
+      usersUser.textContent = body.users.byRole.user;
+
+      paymentsTotal.textContent = body.payments.total;
+      paymentsByStatus.replaceChildren(
+        ...Object.entries(body.payments.byStatus).map(([status, count]) => {
+          const dt = document.createElement("dt");
+          dt.textContent = statusLabels[status] ?? status;
+          const dd = document.createElement("dd");
+          dd.textContent = count;
+          dd.dataset.testid = `dashboard-payments-${status}`;
+          return [dt, dd];
+        }).flat(),
+      );
+
+      if (body.recentPayments.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 4;
+        cell.className = "empty-state";
+        cell.textContent = "Nenhuma transação registrada.";
+        row.append(cell);
+        recentList.replaceChildren(row);
+      } else {
+        recentList.replaceChildren(...body.recentPayments.map(buildRecentRow));
+      }
+    } catch {
+      showMessage(dashboardMessage, "Erro de conexão. Tente novamente.", "error");
+    }
+  };
+
+  void loadDashboard();
+}

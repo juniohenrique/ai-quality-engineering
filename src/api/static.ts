@@ -47,6 +47,7 @@ export async function serveStatic(
     "/login": "/login.html",
     "/users": "/users.html",
     "/user-form": "/user-form.html",
+    "/dashboard": "/dashboard.html",
   };
 
   // Se é uma rota mapeada, usar o arquivo correspondente
