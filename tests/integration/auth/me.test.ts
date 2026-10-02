@@ -9,14 +9,11 @@ vi.hoisted(() => {
   vi.stubEnv("JWT_SECRET", "test-jwt-secret-for-integration");
 });
 
-import { TokenService } from "../../../src/services/token.service.js";
-
-const port = 3311 + Math.floor(Math.random() * 1000);
+const port = 3321 + Math.floor(Math.random() * 1000);
 const baseUrl = `http://127.0.0.1:${port}`;
-const tokenService = new TokenService();
 const JWT_SECRET = "test-jwt-secret-for-integration";
 
-const passwordHash = await bcrypt.hash("password", 12);
+const passwordHash = await bcrypt.hash("password", 10);
 
 let seededUserId = "";
 
@@ -56,11 +53,17 @@ async function login(): Promise<{ accessToken: string; refreshToken: string }> {
   return { accessToken: body.accessToken, refreshToken: body.refreshToken };
 }
 
-async function refresh(refreshToken: string): Promise<{ status: number; body: unknown }> {
-  const response = await fetch(`${baseUrl}/auth/refresh`, {
+async function logout(accessToken: string): Promise<number> {
+  const response = await fetch(`${baseUrl}/auth/logout`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  return response.status;
+}
+
+async function me(accessToken: string): Promise<{ status: number; body: unknown }> {
+  const response = await fetch(`${baseUrl}/auth/me`, {
+    headers: { authorization: `Bearer ${accessToken}` },
   });
   const body = response.status === 204 ? undefined : await response.json();
   return { status: response.status, body };
@@ -86,85 +89,107 @@ beforeEach(async () => {
   await seedUser();
 });
 
-describe("POST /auth/refresh", () => {
-  it("issues a new token pair on valid refresh", async () => {
-    const { refreshToken } = await login();
+describe("GET /auth/me", () => {
+  it("returns 200 with user profile when access token is valid", async () => {
+    const { accessToken } = await login();
 
-    const res = await refresh(refreshToken);
+    const res = await me(accessToken);
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty("accessToken");
-    expect(res.body).toHaveProperty("refreshToken");
-    expect(typeof (res.body as { accessToken: string }).accessToken).toBe("string");
-    expect(typeof (res.body as { refreshToken: string }).refreshToken).toBe("string");
-  });
-
-  it("new accessToken carries the correct role from the database", async () => {
-    const { refreshToken } = await login();
-
-    // Promote the seeded user to admin in the DB — the refresh must reflect
-    // the DB role, not anything embedded in the (role-less) refresh token.
-    await testDatabase.query("UPDATE users SET role = 'admin' WHERE id = $1", [seededUserId]);
-
-    const res = await refresh(refreshToken);
-    expect(res.status).toBe(200);
-    const newAccessToken = (res.body as { accessToken: string }).accessToken;
-    const payload = tokenService.verifyAccess(newAccessToken);
-    expect(payload).toMatchObject({ sub: seededUserId, role: "admin" });
-  });
-
-  it("returns 401 on the second refresh using the same token (blacklist)", async () => {
-    const { refreshToken } = await login();
-
-    const first = await refresh(refreshToken);
-    expect(first.status).toBe(200);
-
-    // Reusing the same refresh token must be rejected because the controller
-    // blacklists the old jti on the first (successful) refresh.
-    const second = await refresh(refreshToken);
-    expect(second.status).toBe(401);
-    expect(second.body).toEqual({
-      error: "invalid_token",
-      message: "Invalid token",
+    expect(res.body).toEqual({
+      id: seededUserId,
+      email: "user@example.com",
+      userName: "User",
+      role: "user",
     });
   });
 
-  it("returns 401 when the refresh token is expired", async () => {
-    const expiredRefreshToken = jwt.sign({ sub: seededUserId }, JWT_SECRET, {
+  it("returns 401 unauthorized when Authorization header is missing", async () => {
+    const response = await fetch(`${baseUrl}/auth/me`);
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body).toEqual({
+      error: "unauthorized",
+      message: "Unauthorized",
+    });
+  });
+
+  it("returns 401 unauthorized when Authorization header lacks Bearer scheme", async () => {
+    const { accessToken } = await login();
+    const response = await fetch(`${baseUrl}/auth/me`, {
+      headers: { authorization: `Basic ${accessToken}` },
+    });
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body).toEqual({
+      error: "unauthorized",
+      message: "Unauthorized",
+    });
+  });
+
+  it("returns 401 unauthorized when Authorization header is Bearer with empty token", async () => {
+    const response = await fetch(`${baseUrl}/auth/me`, {
+      headers: { authorization: "Bearer " },
+    });
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body).toEqual({
+      error: "unauthorized",
+      message: "Unauthorized",
+    });
+  });
+
+  it("returns 401 unauthorized when access token is expired", async () => {
+    const expiredAccessToken = jwt.sign({ sub: seededUserId, role: "user" }, JWT_SECRET, {
       algorithm: "HS256",
       expiresIn: "-1s",
       jwtid: "expired-jti",
     });
 
-    const res = await refresh(expiredRefreshToken);
+    const res = await me(expiredAccessToken);
     expect(res.status).toBe(401);
     expect(res.body).toEqual({
-      error: "invalid_token",
-      message: "Invalid token",
+      error: "unauthorized",
+      message: "Unauthorized",
     });
   });
 
-  it("returns 401 when the refresh token signature is tampered", async () => {
-    const { refreshToken } = await login();
-    const parts = refreshToken.split(".");
+  it("returns 401 unauthorized when access token signature is tampered", async () => {
+    const { accessToken } = await login();
+    const parts = accessToken.split(".");
     const tampered = `${parts[0] ?? ""}.${parts[1] ?? ""}.${flipSignature(parts[2] ?? "")}`;
 
-    const res = await refresh(tampered);
+    const res = await me(tampered);
     expect(res.status).toBe(401);
     expect(res.body).toEqual({
-      error: "invalid_token",
-      message: "Invalid token",
+      error: "unauthorized",
+      message: "Unauthorized",
     });
   });
 
-  it.skip("returns 401 when access token is passed as refreshToken", async () => {
-    // TODO S07: access token accepted as refresh
-    const { accessToken } = await login();
+  it("returns 401 unauthorized when access token is signed with different secret", async () => {
+    const differentSecretToken = jwt.sign({ sub: seededUserId, role: "user" }, "different-secret", {
+      algorithm: "HS256",
+      expiresIn: "1h",
+      jwtid: "diff-secret-jti",
+    });
 
-    const res = await refresh(accessToken);
+    const res = await me(differentSecretToken);
     expect(res.status).toBe(401);
     expect(res.body).toEqual({
-      error: "invalid_token",
-      message: "Invalid token",
+      error: "unauthorized",
+      message: "Unauthorized",
+    });
+  });
+
+  it("returns 401 unauthorized when access token is revoked (logout then me)", async () => {
+    const { accessToken } = await login();
+    await logout(accessToken);
+
+    const res = await me(accessToken);
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({
+      error: "unauthorized",
+      message: "Unauthorized",
     });
   });
 });
