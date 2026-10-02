@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import type { UserStats } from "../../../src/services/user.service.js";
-import type { PaymentStats } from "../../../src/services/payment.service.js";
+import type { UserService, UserStats } from "../../../src/services/user.service.js";
+import type { PaymentService, PaymentStats } from "../../../src/services/payment.service.js";
+import type { PaymentPage } from "../../../src/repositories/payment.repository.js";
+import type { Payment } from "../../../src/domain/payment.js";
 import { DashboardService } from "../../../src/services/dashboard.service.js";
 
 describe("DashboardService", () => {
   it("orchestrates user and payment stats with recent payments", async () => {
     // Arrange
-    const userService: any = { getUserStats: vi.fn() };
-    const paymentService: any = {
+    const userService: Pick<UserService, "getUserStats"> = {
+      getUserStats: vi.fn(),
+    };
+    const paymentService: Pick<PaymentService, "getPaymentStats" | "listPayments"> = {
       getPaymentStats: vi.fn(),
       listPayments: vi.fn(),
     };
@@ -17,7 +21,7 @@ describe("DashboardService", () => {
       total: 5,
       byStatus: { pending: 0, processing: 0, completed: 0, failed: 0, refunded: 0 },
     };
-    const mockPaymentPage: any = {
+    const mockPaymentPage: PaymentPage = {
       items: [
         {
           id: "pay-1",
@@ -25,25 +29,25 @@ describe("DashboardService", () => {
           amount: 100,
           currency: "BRL",
           status: "completed",
-          createdAt: "2026-01-01T00:00:00.000Z",
-        },
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        } as unknown as Payment,
         {
           id: "pay-2",
           userId: "user-1",
           amount: 200,
           currency: "BRL",
           status: "pending",
-          createdAt: "2026-01-01T00:00:00.000Z",
-        },
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        } as unknown as Payment,
       ],
       total: 2,
     };
 
     const service = new DashboardService(userService, paymentService);
 
-    userService.getUserStats.mockResolvedValue(mockUserStats);
-    paymentService.getPaymentStats.mockResolvedValue(mockPaymentStats);
-    paymentService.listPayments.mockResolvedValue(mockPaymentPage);
+    vi.mocked(userService.getUserStats).mockResolvedValue(mockUserStats);
+    vi.mocked(paymentService.getPaymentStats).mockResolvedValue(mockPaymentStats);
+    vi.mocked(paymentService.listPayments).mockResolvedValue(mockPaymentPage);
 
     // Act
     const result = await service.getStats();
@@ -59,7 +63,7 @@ describe("DashboardService", () => {
         amount: 100,
         currency: "BRL",
         status: "completed",
-        createdAt: "2026-01-01T00:00:00.000Z",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
       },
       {
         id: "pay-2",
@@ -67,7 +71,7 @@ describe("DashboardService", () => {
         amount: 200,
         currency: "BRL",
         status: "pending",
-        createdAt: "2026-01-01T00:00:00.000Z",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
       },
     ]);
   });
@@ -82,7 +86,7 @@ describe("DashboardService", () => {
       byStatus: { pending: 0, processing: 0, completed: 0, failed: 0, refunded: 0 },
     };
 
-    let userService: any = {
+    const userService: Pick<UserService, "getUserStats"> = {
       getUserStats: vi.fn().mockImplementation(async () => {
         startTimes.push(Date.now());
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -90,7 +94,7 @@ describe("DashboardService", () => {
       }),
     };
 
-    let paymentService: any = {
+    const paymentService: Pick<PaymentService, "getPaymentStats" | "listPayments"> = {
       getPaymentStats: vi.fn().mockImplementation(async () => {
         startTimes.push(Date.now());
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -118,8 +122,8 @@ describe("DashboardService", () => {
 
   it("returns empty recentPayments when listPayments returns empty", async () => {
     // Arrange
-    const userService: any = { getUserStats: vi.fn() };
-    const paymentService: any = {
+    const userService: Pick<UserService, "getUserStats"> = { getUserStats: vi.fn() };
+    const paymentService: Pick<PaymentService, "getPaymentStats" | "listPayments"> = {
       getPaymentStats: vi.fn(),
       listPayments: vi.fn(),
     };
@@ -131,9 +135,9 @@ describe("DashboardService", () => {
     };
 
     const service = new DashboardService(userService, paymentService);
-    userService.getUserStats.mockResolvedValue(mockUserStats);
-    paymentService.getPaymentStats.mockResolvedValue(mockPaymentStats);
-    paymentService.listPayments.mockResolvedValue({ items: [], total: 0 });
+    vi.mocked(userService.getUserStats).mockResolvedValue(mockUserStats);
+    vi.mocked(paymentService.getPaymentStats).mockResolvedValue(mockPaymentStats);
+    vi.mocked(paymentService.listPayments).mockResolvedValue({ items: [], total: 0 });
 
     // Act
     const result = await service.getStats();
