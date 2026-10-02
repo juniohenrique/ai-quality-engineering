@@ -1,3 +1,4 @@
+import type { PaymentStatus } from "../domain/payment.js";
 import type { PaymentRepository, PaymentFilters, PaymentPage } from "./payment.repository.js";
 import { Payment } from "../domain/payment.js";
 
@@ -38,5 +39,19 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       items: sorted.slice(filters.offset, filters.offset + filters.limit),
       total: filtered.length,
     };
+  }
+
+  async countByStatus(): Promise<Record<PaymentStatus, number>> {
+    const base: Record<PaymentStatus, number> = {
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      failed: 0,
+      refunded: 0,
+    };
+    for (const p of this.payments) {
+      base[p.status] = (base[p.status] ?? 0) + 1;
+    }
+    return base;
   }
 }

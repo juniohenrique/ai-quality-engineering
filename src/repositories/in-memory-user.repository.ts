@@ -1,4 +1,5 @@
 import type { User } from "../domain/user.js";
+import type { UserRole } from "../domain/user.js";
 import type { UserRepository } from "./user.repository.js";
 
 export class InMemoryUserRepository implements UserRepository {
@@ -37,5 +38,13 @@ export class InMemoryUserRepository implements UserRepository {
 
     this.users.splice(userIndex, 1);
     return true;
+  }
+
+  async countByRole(): Promise<Record<UserRole, number>> {
+    const base: Record<UserRole, number> = { admin: 0, user: 0 };
+    for (const user of this.users) {
+      base[user.role] = (base[user.role] ?? 0) + 1;
+    }
+    return base;
   }
 }

@@ -22,4 +22,5 @@ export interface PaymentRepository {
   create(payment: Payment): Promise<void>;
   update(payment: Payment): Promise<void>;
   findMany(filters: PaymentFilters): Promise<PaymentPage>;
+  countByStatus(): Promise<Record<PaymentStatus, number>>;
 }
