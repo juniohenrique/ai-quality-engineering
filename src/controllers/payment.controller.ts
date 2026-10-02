@@ -1,5 +1,5 @@
 import type { ServerResponse } from "node:http";
-import type { PaymentService } from "../services/payment.service.js";
+import type { ListPaymentsQuery, PaymentService } from "../services/payment.service.js";
 import type { CreatePaymentDTO } from "../dto/create-payment.dto.js";
 import { writeErrorResponse } from "../http/error-response.js";
 import type { AuthContext } from "../middlewares/auth.middleware.js";
@@ -21,9 +21,81 @@ function isTransitionInput(input: unknown): input is { status: PaymentStatus } {
   return typeof c.status === "string" && (VALID_STATUSES as string[]).includes(c.status);
 }
 
+const VALID_PAYMENT_STATUSES = [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+  "refunded",
+] as const;
+
+function parseListQuery(
+  params: URLSearchParams,
+): { ok: true; value: ListPaymentsQuery } | { ok: false; error: string } {
+  const value: ListPaymentsQuery = {};
+
+  const userId = params.get("userId");
+  if (userId !== null && userId.trim().length > 0) {
+    value.userId = userId.trim();
+  }
+
+  const status = params.get("status");
+  if (status !== null) {
+    if (!(VALID_PAYMENT_STATUSES as readonly string[]).includes(status)) {
+      return { ok: false, error: `Invalid status: ${status}` };
+    }
+    value.status = status as PaymentStatus;
+  }
+
+  for (const key of ["minAmount", "maxAmount"] as const) {
+    const raw = params.get(key);
+    if (raw !== null) {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0) {
+        return { ok: false, error: `Invalid ${key}` };
+      }
+      value[key] = n;
+    }
+  }
+
+  for (const key of ["from", "to"] as const) {
+    const raw = params.get(key);
+    if (raw !== null) {
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) {
+        return { ok: false, error: `Invalid ${key} date` };
+      }
+      value[key] = d;
+    }
+  }
+
+  const limit = params.get("limit");
+  if (limit !== null) {
+    const n = Number(limit);
+    if (!Number.isInteger(n) || n < 1 || n > 100) {
+      return { ok: false, error: "Invalid limit (1-100)" };
+    }
+    value.limit = n;
+  }
+
+  const offset = params.get("offset");
+  if (offset !== null) {
+    const n = Number(offset);
+    if (!Number.isInteger(n) || n < 0) {
+      return { ok: false, error: "Invalid offset" };
+    }
+    value.offset = n;
+  }
+
+  return { ok: true, value };
+}
+
 export class PaymentController {
   constructor(
-    private readonly service: Pick<PaymentService, "createPayment" | "transitionStatus">,
+    private readonly service: Pick<
+      PaymentService,
+      "createPayment" | "transitionStatus" | "listPayments"
+    >,
   ) {}
 
   private isValidCurrency(currency: string): boolean {
@@ -57,6 +129,17 @@ export class PaymentController {
     }
     if (!requireRole(context, "admin")) {
       writeErrorResponse(response, 403, "forbidden", "Forbidden");
+      return false;
+    }
+    return true;
+  }
+
+  private authenticate(
+    context: AuthContext | null,
+    response: ServerResponse,
+  ): context is AuthContext {
+    if (context === null) {
+      writeErrorResponse(response, 401, "unauthorized", "Unauthorized");
       return false;
     }
     return true;
@@ -118,6 +201,51 @@ export class PaymentController {
         writeErrorResponse(response, 400, "invalid_transition", error.message);
         return;
       }
+      writeErrorResponse(
+        response,
+        500,
+        "internal_error",
+        error instanceof Error ? error.message : "Unexpected error",
+      );
+    }
+  }
+
+  async handleList(
+    context: AuthContext | null,
+    query: URLSearchParams,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!this.authenticate(context, response)) return;
+
+    const parsed = parseListQuery(query);
+    if (!parsed.ok) {
+      writeErrorResponse(response, 400, "invalid_request", parsed.error);
+      return;
+    }
+
+    try {
+      const page = await this.service.listPayments(parsed.value, {
+        userId: context.userId,
+        role: context.role,
+      });
+
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          items: page.items.map((p) => ({
+            id: p.id,
+            userId: p.userId,
+            amount: p.amount,
+            currency: p.currency,
+            status: p.status,
+            createdAt: p.createdAt.toISOString(),
+          })),
+          total: page.total,
+          limit: parsed.value.limit ?? 20,
+          offset: parsed.value.offset ?? 0,
+        }),
+      );
+    } catch (error) {
       writeErrorResponse(
         response,
         500,

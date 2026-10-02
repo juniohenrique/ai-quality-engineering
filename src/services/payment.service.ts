@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Payment, type PaymentStatus } from "../domain/payment.js";
 import type { CreatePaymentDTO } from "../dto/create-payment.dto.js";
-import type { PaymentRepository } from "../repositories/payment.repository.js";
+import type {
+  PaymentRepository,
+  PaymentPage,
+  PaymentFilters,
+} from "../repositories/payment.repository.js";
 import { isUniqueViolation } from "../utils/postgres-errors.js";
 import type { RabbitMqProducer } from "../queue/producer.js";
 
@@ -16,6 +20,22 @@ export const PAYMENT_EVENTS_QUEUE = "payment-events";
  */
 export interface PaymentContext {
   correlationId?: string;
+}
+
+export interface ListPaymentsQuery {
+  userId?: string;
+  status?: PaymentStatus;
+  minAmount?: number;
+  maxAmount?: number;
+  from?: Date;
+  to?: Date;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PaymentRequester {
+  userId: string;
+  role: "admin" | "user";
 }
 
 export class PaymentService {
@@ -140,5 +160,40 @@ export class PaymentService {
     }
 
     return updated;
+  }
+
+  /**
+   * Lists payments with filtering, pagination and IDOR protection.
+   *
+   * **Pagination:** `limit` and `offset` are clamped to safe bounds
+   * (1–100 and ≥0) so a malicious or buggy caller cannot request an
+   * unbounded page.
+   *
+   * **Anti-IDOR:** a non-admin requester can only ever see their own
+   * payments, regardless of the `userId` value supplied in `query`.
+   * An admin may filter by any `userId`; omitting `userId` returns
+   * payments across all users.
+   *
+   * @param query - Optional filter / pagination parameters.
+   * @param requester - Identity and role of the caller.
+   * @returns A {@link PaymentPage} with the matching payments and total count.
+   */
+  async listPayments(query: ListPaymentsQuery, requester: PaymentRequester): Promise<PaymentPage> {
+    const limit = Math.min(Math.max(query.limit ?? 20, 1), 100);
+    const offset = Math.max(query.offset ?? 0, 0);
+
+    // Anti-IDOR: user só vê os próprios pagamentos, mesmo que passe
+    // outro userId no query. Admin pode filtrar por qualquer userId.
+    const effectiveUserId = requester.role === "admin" ? query.userId : requester.userId;
+
+    const filters: PaymentFilters = { limit, offset };
+    if (effectiveUserId) filters.userId = effectiveUserId;
+    if (query.status) filters.status = query.status;
+    if (query.minAmount !== undefined) filters.minAmount = query.minAmount;
+    if (query.maxAmount !== undefined) filters.maxAmount = query.maxAmount;
+    if (query.from) filters.from = query.from;
+    if (query.to) filters.to = query.to;
+
+    return this.repository.findMany(filters);
   }
 }

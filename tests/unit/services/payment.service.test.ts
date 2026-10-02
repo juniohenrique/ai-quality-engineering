@@ -10,6 +10,7 @@ function createRepository(): PaymentRepository {
     findByIdempotencyKey: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    findMany: vi.fn(),
   };
 }
 
@@ -258,5 +259,87 @@ describe("transitionStatus", () => {
     expect(repo.update).toHaveBeenCalledWith(
       expect.objectContaining({ id: "pay-1", status: "processing" }),
     );
+  });
+});
+
+describe("listPayments", () => {
+  it("admin sees all — no userId filter applied", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.findMany).mockResolvedValue({ items: [], total: 0 });
+    const service = new PaymentService(repo);
+
+    await service.listPayments({}, { userId: "admin-1", role: "admin" });
+
+    expect(repo.findMany).toHaveBeenCalledWith({
+      limit: 20,
+      offset: 0,
+    });
+  });
+
+  it("admin can filter by userId", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.findMany).mockResolvedValue({ items: [], total: 0 });
+    const service = new PaymentService(repo);
+
+    await service.listPayments({ userId: "u1" }, { userId: "admin-1", role: "admin" });
+
+    expect(repo.findMany).toHaveBeenCalledWith({
+      limit: 20,
+      offset: 0,
+      userId: "u1",
+    });
+  });
+
+  it("user role forces own userId ignoring query", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.findMany).mockResolvedValue({ items: [], total: 0 });
+    const service = new PaymentService(repo);
+
+    await service.listPayments({ userId: "u2" }, { userId: "u1", role: "user" });
+
+    expect(repo.findMany).toHaveBeenCalledWith({
+      limit: 20,
+      offset: 0,
+      userId: "u1",
+    });
+  });
+
+  it("applies default limit 20 and offset 0", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.findMany).mockResolvedValue({ items: [], total: 0 });
+    const service = new PaymentService(repo);
+
+    await service.listPayments({}, { userId: "admin-1", role: "admin" });
+
+    expect(repo.findMany).toHaveBeenCalledWith({
+      limit: 20,
+      offset: 0,
+    });
+  });
+
+  it("caps limit at 100", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.findMany).mockResolvedValue({ items: [], total: 0 });
+    const service = new PaymentService(repo);
+
+    await service.listPayments({ limit: 500 }, { userId: "admin-1", role: "admin" });
+
+    expect(repo.findMany).toHaveBeenCalledWith({
+      limit: 100,
+      offset: 0,
+    });
+  });
+
+  it("rejects negative offset via Math.max → 0", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.findMany).mockResolvedValue({ items: [], total: 0 });
+    const service = new PaymentService(repo);
+
+    await service.listPayments({ offset: -5 }, { userId: "admin-1", role: "admin" });
+
+    expect(repo.findMany).toHaveBeenCalledWith({
+      limit: 20,
+      offset: 0,
+    });
   });
 });
