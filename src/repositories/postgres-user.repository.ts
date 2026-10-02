@@ -82,6 +82,19 @@ export class PostgresUserRepository implements UserRepository {
     const result = await this.pool.query("DELETE FROM users WHERE id = $1", [id]);
     return result.rowCount !== 0;
   }
+
+  async countByRole(): Promise<Record<UserRole, number>> {
+    const result = await this.pool.query<{ role: string; count: string }>(
+      "SELECT role, COUNT(*)::text AS count FROM users GROUP BY role",
+    );
+    const base: Record<UserRole, number> = { admin: 0, user: 0 };
+    for (const row of result.rows) {
+      if (row.role === "admin" || row.role === "user") {
+        base[row.role] = Number(row.count);
+      }
+    }
+    return base;
+  }
 }
 
 function toUser(row: UserRow): User {

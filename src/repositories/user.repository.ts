@@ -1,4 +1,5 @@
 import type { User } from "../domain/user.js";
+import type { UserRole } from "../domain/user.js";
 
 export interface UserRepository {
   findAll(): Promise<User[]>;
@@ -7,4 +8,5 @@ export interface UserRepository {
   save(user: User): Promise<void>;
   update(user: User): Promise<void>;
   remove(id: string): Promise<boolean>;
+  countByRole(): Promise<Record<UserRole, number>>;
 }

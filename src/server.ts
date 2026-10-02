@@ -5,6 +5,7 @@ import { HealthController } from "./controllers/health.controller.js";
 import { createPool, waitForDatabase } from "./db/client.js";
 import { serveStatic } from "./api/static.js";
 import { UserController } from "./controllers/user.controller.js";
+import { DashboardController } from "./controllers/dashboard.controller.js";
 import { HealthRepository } from "./repositories/health.repository.js";
 import { InMemoryUserRepository } from "./repositories/in-memory-user.repository.js";
 import { PostgresUserRepository } from "./repositories/postgres-user.repository.js";
@@ -13,6 +14,7 @@ import { PostgresPaymentRepository } from "./repositories/postgres-payment.repos
 import { HealthService } from "./services/health.service.js";
 import { UserService } from "./services/user.service.js";
 import { PaymentService } from "./services/payment.service.js";
+import { DashboardService } from "./services/dashboard.service.js";
 import { writeErrorResponse } from "./http/error-response.js";
 import { AuthController } from "./controllers/auth.controller.js";
 import { User } from "./domain/user.js";
@@ -47,6 +49,8 @@ const rabbitMqProducer = new RabbitMqProducer();
 const emailProducer = new EmailProducer(rabbitMqProducer);
 const paymentService = new PaymentService(paymentRepository, rabbitMqProducer);
 const paymentController = new PaymentController(paymentService);
+const dashboardService = new DashboardService(userService, paymentService);
+const dashboardController = new DashboardController(dashboardService);
 
 const passwordService = new PasswordService();
 const tokenService = new TokenService();
@@ -222,6 +226,12 @@ const server = createServer(async (request, response) => {
     }
 
     await userController.handleList(ctx, response);
+    return;
+  }
+
+  if (requestUrl.pathname === "/admin/dashboard" && request.method === "GET") {
+    const ctx = authenticate(request);
+    await dashboardController.handleGet(ctx, response);
     return;
   }
 

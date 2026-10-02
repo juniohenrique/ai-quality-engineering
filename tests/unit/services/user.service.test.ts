@@ -11,6 +11,7 @@ function createRepository(): UserRepository {
     save: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
+    countByRole: vi.fn(),
   };
 }
 
@@ -251,6 +252,29 @@ describe("UserService", () => {
         passwordHash: existingUser.passwordHash,
         role: "admin",
       });
+    });
+  });
+
+  describe("getUserStats", () => {
+    it("returns total and byRole breakdown", async () => {
+      const repository = createRepository();
+      vi.mocked(repository.countByRole).mockResolvedValue({ admin: 2, user: 5 });
+      const service = new UserService(repository);
+
+      const result = await service.getUserStats();
+
+      expect(result).toEqual({ total: 7, byRole: { admin: 2, user: 5 } });
+      expect(repository.countByRole).toHaveBeenCalledOnce();
+    });
+
+    it("returns zero for missing roles", async () => {
+      const repository = createRepository();
+      vi.mocked(repository.countByRole).mockResolvedValue({ admin: 0, user: 0 });
+      const service = new UserService(repository);
+
+      const result = await service.getUserStats();
+
+      expect(result).toEqual({ total: 0, byRole: { admin: 0, user: 0 } });
     });
   });
 });

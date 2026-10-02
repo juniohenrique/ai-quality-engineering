@@ -141,6 +141,25 @@ export class PostgresPaymentRepository implements PaymentRepository {
       payment.id,
     ]);
   }
+
+  async countByStatus(): Promise<Record<PaymentStatus, number>> {
+    const result = await this.pool.query<{ status: string; count: string }>(
+      "SELECT status, COUNT(*)::text AS count FROM payments GROUP BY status",
+    );
+    const base: Record<PaymentStatus, number> = {
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      failed: 0,
+      refunded: 0,
+    };
+    for (const row of result.rows) {
+      if (row.status in base) {
+        base[row.status as PaymentStatus] = Number(row.count);
+      }
+    }
+    return base;
+  }
 }
 
 function rowToPayment(row: PaymentRow): Payment {

@@ -38,6 +38,11 @@ export interface PaymentRequester {
   role: "admin" | "user";
 }
 
+export interface PaymentStats {
+  total: number;
+  byStatus: Record<PaymentStatus, number>;
+}
+
 export class PaymentService {
   constructor(
     private readonly repository: PaymentRepository,
@@ -195,5 +200,11 @@ export class PaymentService {
     if (query.to) filters.to = query.to;
 
     return this.repository.findMany(filters);
+  }
+
+  async getPaymentStats(): Promise<PaymentStats> {
+    const byStatus = await this.repository.countByStatus();
+    const total = Object.values(byStatus).reduce((s, n) => s + n, 0);
+    return { total, byStatus };
   }
 }

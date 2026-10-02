@@ -10,6 +10,11 @@ export interface CreateUserInput {
 
 export type UpdateUserInput = CreateUserInput;
 
+export interface UserStats {
+  total: number;
+  byRole: Record<"admin" | "user", number>;
+}
+
 export class UserService {
   constructor(private readonly repository: UserRepository) {}
 
@@ -86,5 +91,10 @@ export class UserService {
 
   async deleteUser(id: string): Promise<boolean> {
     return this.repository.remove(id);
+  }
+
+  async getUserStats(): Promise<UserStats> {
+    const byRole = await this.repository.countByRole();
+    return { total: byRole.admin + byRole.user, byRole };
   }
 }
