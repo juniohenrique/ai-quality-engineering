@@ -11,6 +11,7 @@ function createRepository(): PaymentRepository {
     create: vi.fn(),
     update: vi.fn(),
     findMany: vi.fn(),
+    countByStatus: vi.fn(),
   };
 }
 
@@ -340,6 +341,59 @@ describe("listPayments", () => {
     expect(repo.findMany).toHaveBeenCalledWith({
       limit: 20,
       offset: 0,
+    });
+  });
+});
+
+describe("getPaymentStats", () => {
+  it("returns total as sum of all statuses", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.countByStatus).mockResolvedValue({
+      pending: 5,
+      processing: 3,
+      completed: 10,
+      failed: 2,
+      refunded: 1,
+    });
+    const service = new PaymentService(repo);
+
+    const stats = await service.getPaymentStats();
+
+    expect(stats).toEqual({
+      total: 21,
+      byStatus: {
+        pending: 5,
+        processing: 3,
+        completed: 10,
+        failed: 2,
+        refunded: 1,
+      },
+    });
+    expect(repo.countByStatus).toHaveBeenCalledOnce();
+  });
+
+  it("includes zero for statuses without payments", async () => {
+    const repo = createRepository();
+    vi.mocked(repo.countByStatus).mockResolvedValue({
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      failed: 0,
+      refunded: 0,
+    });
+    const service = new PaymentService(repo);
+
+    const stats = await service.getPaymentStats();
+
+    expect(stats).toEqual({
+      total: 0,
+      byStatus: {
+        pending: 0,
+        processing: 0,
+        completed: 0,
+        failed: 0,
+        refunded: 0,
+      },
     });
   });
 });
