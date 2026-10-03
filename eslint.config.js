@@ -7,6 +7,18 @@ export default [
     ignores: ["dist", "coverage", "node_modules", "stryker-tmp"],
   },
   {
+    // Browser globals for Playwright E2E specs (they run in a browser context)
+    files: ["tests/e2e/**/*.ts"],
+    languageOptions: {
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        HTMLElement: "readonly",
+        localStorage: "readonly",
+      },
+    },
+  },
+  {
     files: ["**/*.ts"],
     languageOptions: {
       parser: tsParser,
