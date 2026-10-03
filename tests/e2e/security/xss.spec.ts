@@ -29,8 +29,8 @@ const XSS_USER = {
 };
 
 async function seedUsers(): Promise<void> {
-  const adminHash = await bcrypt.hash(ADMIN_USER.password, 12);
-  const xssHash = await bcrypt.hash(XSS_USER.password, 12);
+  const adminHash = await bcrypt.hash(ADMIN_USER.password, 10);
+  const xssHash = await bcrypt.hash(XSS_USER.password, 10);
   await testDatabase.query(
     "INSERT INTO users (id, email, user_name, password_hash, role) VALUES ($1, $2, $3, $4, $5)",
     [ADMIN_USER.id, ADMIN_USER.email, ADMIN_USER.userName, adminHash, ADMIN_USER.role],
