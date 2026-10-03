@@ -293,7 +293,11 @@ if (userList && !requireAuth()) {
         const row = document.createElement("tr");
         row.dataset.testid = "user-row";
         row.dataset.userId = user.id;
-        row.innerHTML = `<td>${user.userName}</td><td>${user.email}</td><td>${user.role}</td>`;
+        for (const value of [user.userName, user.email, user.role]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.append(cell);
+        }
         const actions = document.createElement("td");
         const edit = document.createElement("a");
         edit.dataset.testid = `user-edit-${user.id}`;
