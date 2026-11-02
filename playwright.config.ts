@@ -47,6 +47,7 @@ export default defineConfig({
     env: {
       DATABASE_URL:
         process.env.DATABASE_URL_TEST || "postgres://postgres:postgres@localhost:5433/quality_test",
+      RATE_LIMIT_DISABLED: "true",
     },
   },
 });

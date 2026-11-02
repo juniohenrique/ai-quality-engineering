@@ -21,7 +21,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage --no-file-parallelism",
     "test:unit": "vitest run tests/unit --passWithNoTests",
-    "test:integration": "DATABASE_URL_TEST=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} DATABASE_URL=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} RUN_DB_INTEGRATION=true npm run migrate:up && DATABASE_URL_TEST=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} DATABASE_URL=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} RUN_DB_INTEGRATION=true vitest run tests/integration --passWithNoTests --no-file-parallelism",
+    "test:integration": "DATABASE_URL_TEST=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} DATABASE_URL=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} RUN_DB_INTEGRATION=true npm run migrate:up && DATABASE_URL_TEST=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} DATABASE_URL=${DATABASE_URL_TEST:-postgres://postgres:postgres@localhost:5433/quality_test} RUN_DB_INTEGRATION=true RATE_LIMIT_DISABLED=true vitest run tests/integration --passWithNoTests --no-file-parallelism",
     "test:contract": "vitest run tests/contract/user.consumer.pact.spec.ts",
     "test:e2e": "playwright test",
     "test:watch": "vitest",
@@ -56,6 +56,7 @@
     "dotenv": "^18.0.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^10.0.10",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "rate-limiter-flexible": "^11.2.1"
   }
 }
