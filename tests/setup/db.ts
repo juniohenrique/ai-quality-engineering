@@ -1,5 +1,7 @@
 import { Pool } from "pg";
 
+process.env.RATE_LIMIT_DISABLED ??= "true";
+
 const databaseUrl =
   process.env.DATABASE_URL_TEST ?? "postgres://postgres:postgres@localhost:5433/quality_test";
 

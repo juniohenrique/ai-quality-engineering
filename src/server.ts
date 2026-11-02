@@ -28,6 +28,7 @@ import { RabbitMqProducer } from "./queue/producer.js";
 import { EmailProducer } from "./queue/email-producer.js";
 import { EmailConsumer } from "./queue/email-consumer.js";
 import { authenticate } from "./middlewares/auth.middleware.js";
+import { checkRateLimit } from "./middlewares/rate-limit.middleware.js";
 
 const { port, databaseUrl } = loadEnv();
 const pool = createPool(databaseUrl);
@@ -93,6 +94,21 @@ const server = createServer(async (request, response) => {
   }
 
   if (requestUrl.pathname === "/auth/login" && request.method === "POST") {
+    const limit = await checkRateLimit(request);
+    if (!limit.ok) {
+      response.writeHead(429, {
+        "content-type": "application/json",
+        "retry-after": String(limit.retryAfter),
+      });
+      response.end(
+        JSON.stringify({
+          error: "too_many_requests",
+          message: "Too many requests",
+        }),
+      );
+      return;
+    }
+
     try {
       const body = await readRequestBody(request);
       await authController.handleLogin(JSON.parse(body), response);
